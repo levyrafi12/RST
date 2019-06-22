@@ -12,7 +12,7 @@ from utils import map_to_cluster
 from relations_inventory import build_parser_action_to_ind_mapping
 # from main import SEP
 
-SEP = "/"
+SEP = os.sep
 
 # debugging 
 print_sents = True
@@ -104,10 +104,9 @@ def binarize_files(base_path, dis_files_dir, bin_files_dir):
 
 	assert os.path.isdir(path), \
 		"Path to dataset does not exist: " + dis_files_dir
-
+	
 	path += SEP + "*.dis"
 	for fn in glob.glob(path):
-		check_path_separator(fn, dis_files_dir)
 		tree = binarize_file(fn, bin_files_dir)
 		trees.append(tree)
 		if tree._root._span[1] > max_edus:
@@ -409,16 +408,6 @@ def remove_dir(base_path, dir):
 		for fn in glob.glob(path_to_files):
 			os.remove(fn)
 		os.rmdir(path)
-
-def check_path_separator(fn, last_dir_name):
-	split_fn = fn.split(SEP)
-	if not last_dir_name in split_fn:
-		assert False, "Bad path separator was set: \"" + SEP + \
-		"\" Call set_path_sep to change separator"
-
-def set_path_sep(path_sep):
-	global SEP
-	SEP = path_sep
 
 def set_print_stat(flag=True):
 	global PRINT_STAT

@@ -35,7 +35,7 @@ def neural_network_model(trees, samples, vocab, max_edus, tag_to_ind_map, \
 	[x_vecs, _] = extract_features(trees, samples, vocab, \
 		1, max_edus, tag_to_ind_map)
 
-	print("num features {}, num classes {}".format(len(x_vecs[0]), num_classes))
+	print("num features {}, num classes {}, num samples {}".format(len(x_vecs[0]), num_classes, len(samples)))
 	print("Running neural model")
 
 	net = Network(len(x_vecs[0]), hidden_size, num_classes)
@@ -43,20 +43,20 @@ def neural_network_model(trees, samples, vocab, max_edus, tag_to_ind_map, \
 
 	criterion = nn.CrossEntropyLoss()
 	optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9)
+	print(optimizer)
 
 	for i in range(iterations):
 		[x_vecs, y_labels] = extract_features(trees, samples, vocab, \
 			subset_size, max_edus, tag_to_ind_map)
 
+		optimizer.zero_grad() # zero the gradient buffers
 		y_pred = net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
 		# scores = y_pred.data.max(1)[1]
 		# n_match = np.sum([scores[i] == y_labels[i] for i in range(len(scores))])
 		# print("num matches = {}%".format(n_match / len(scores) * 100))
-
 		loss = criterion(y_pred, Variable(torch.tensor(y_labels, dtype=torch.long)))
-		# print("t = {} loss = {}".format(i, loss.item()))
+		print("t = {} loss = {}".format(i, loss.item()))
 
-		optimizer.zero_grad() # zero the gradient buffers
 		loss.backward()
 		optimizer.step()
 

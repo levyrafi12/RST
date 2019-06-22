@@ -7,21 +7,17 @@ from rst_parser import parse_files
 from model import mini_batch_linear_model 
 from model import neural_network_model
 from vocabulary import gen_vocabulary
-from preprocess import set_path_sep
 from preprocess import print_trees_stats
 
 import sys
 
 # Directories variables
 WORK_DIR = "." # current dir 
-TRAINING_DIR = "TRAINING" # directory of the training dataset
-DEV_TEST_DIR = "DEV" # directory of dev/test dataset
+TRAINING_DIR = "..\\dataset\\TRAINING" # directory of the training dataset
+DEV_TEST_DIR = "..\\dataset\\DEV" # directory of dev/test dataset
 DEV_TEST_GOLD_DIR = "dev_gold" # dir of the golden serial trees of dev/test dataset
 PRED_OUTDIR = "pred" # directory of the generated predicted serial trees
-GLOVE_DIR = "glove" # in which the glove embedding vectors file exists (glove.6B.50d.txt)
-
-# to run on Linux, set PATH_SEP to "/"
-PATH_SEP = "\\" 
+GLOVE_DIR = "..\\glove" # in which the glove embedding vectors file exists (glove.6B.50d.txt)
 
 def parse_args(argv):
 	model_name = "neural"
@@ -62,7 +58,6 @@ def train_model(model_name, trees, samples, y_all, vocab, max_edus, tag_to_ind_m
 	return model
 	
 if __name__ == '__main__':
-	set_path_sep(PATH_SEP)
 	[model_name, baseline, print_stats] = parse_args(sys.argv)
 
 	print("preprocessing")
