@@ -59,7 +59,7 @@ class TreeInfo(object):
 def preprocess(path, dis_files_dir, ser_files_dir='', bin_files_dir=''):
 	build_parser_action_to_ind_mapping()
 
-	[trees, max_edus] = binarize_files(path, dis_files_dir, bin_files_dir)
+	trees = binarize_files(path, dis_files_dir, bin_files_dir)
 
 	if ser_files_dir != '':
 		print_serial_files(path, trees, ser_files_dir)
@@ -93,11 +93,10 @@ def preprocess(path, dis_files_dir, ser_files_dir='', bin_files_dir=''):
 	# print("num match between edu and a sentence {} , num edus {} , {}%".\
 	# format(match_edus, num_edus, match_edus / num_edus * 100.0))
 
-	return [trees, max_edus]
+	return trees
 
 def binarize_files(base_path, dis_files_dir, bin_files_dir):
 	trees = []
-	max_edus = 0
 	path = base_path
 	path += SEP
 	path += dis_files_dir
@@ -109,9 +108,7 @@ def binarize_files(base_path, dis_files_dir, bin_files_dir):
 	for fn in glob.glob(path):
 		tree = binarize_file(fn, bin_files_dir)
 		trees.append(tree)
-		if tree._root._span[1] > max_edus:
-			max_edus = tree._root._span[1]
-	return [trees, max_edus]
+	return trees
 
 # return the root of the binarized file
 

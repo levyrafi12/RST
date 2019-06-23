@@ -1,5 +1,3 @@
-
-
 from sklearn import linear_model
 import numpy as np
 
@@ -14,6 +12,7 @@ from relations_inventory import ind_to_action_map
 
 hidden_size = 128
 lr = 1e-4 # learning rate
+momentum = 0.9
 
 class Network(nn.Module):
     def __init__(self, n_features, hidden_size, num_classes):
@@ -27,13 +26,13 @@ class Network(nn.Module):
         x = F.relu(self.fc1(x))
         return F.relu(self.fc2(x))
  
-def neural_network_model(trees, samples, vocab, max_edus, tag_to_ind_map, \
-	iterations=200, subset_size=5000):
+def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
+	iterations=20, subset_size=5000):
 
 	num_classes = len(ind_to_action_map)
 
 	[x_vecs, _] = extract_features(trees, samples, vocab, \
-		1, max_edus, tag_to_ind_map)
+		1, tag_to_ind_map)
 
 	print("num features {}, num classes {}, num samples {}".format(len(x_vecs[0]), num_classes, len(samples)))
 	print("Running neural model")
@@ -41,13 +40,14 @@ def neural_network_model(trees, samples, vocab, max_edus, tag_to_ind_map, \
 	net = Network(len(x_vecs[0]), hidden_size, num_classes)
 	print(net)
 
+
 	criterion = nn.CrossEntropyLoss()
-	optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9)
+	optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
 	print(optimizer)
 
 	for i in range(iterations):
 		[x_vecs, y_labels] = extract_features(trees, samples, vocab, \
-			subset_size, max_edus, tag_to_ind_map)
+			subset_size, tag_to_ind_map)
 
 		optimizer.zero_grad() # zero the gradient buffers
 		y_pred = net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
@@ -59,6 +59,8 @@ def neural_network_model(trees, samples, vocab, max_edus, tag_to_ind_map, \
 
 		loss.backward()
 		optimizer.step()
+
+	print("t = {} loss = {}".format(iterations, loss.item()))
 
 	return net
 

@@ -5,22 +5,26 @@ from vocabulary import split_edu_to_tokens
 from vocabulary import vocab_get
 from vocabulary import DEFAULT_TOKEN # empty string
 from vocabulary import get_tag_ind
+import numpy as np
 
 import random
 
-def extract_features(trees, samples, vocab, subset_size, max_edus, tag_to_ind_map):
+def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map):
 	x_vecs = []
 	y_labels = []
 
+	rand_samples = np.arange(len(samples))
+	np.random.shuffle(rand_samples)
+
 	for i in range(subset_size):
-		sample_ind = random.randint(0, len(samples) - 1)
-		_, vec_feats = add_features_per_sample(samples[sample_ind], vocab, max_edus, tag_to_ind_map)
+		sample_ind = rand_samples[i]
+		_, vec_feats = add_features_per_sample(samples[sample_ind], vocab, tag_to_ind_map)
 		x_vecs.append(vec_feats)
 		y_labels.append(action_to_ind_map[samples[sample_ind]._action])
 
 	return [x_vecs, y_labels]
 
-def add_features_per_sample(sample, vocab, max_edus, tag_to_ind_map, use_def=False):
+def add_features_per_sample(sample, vocab, tag_to_ind_map, use_def=False):
 	features = {}
 	feat_names = []
 	split_edus = []
@@ -55,7 +59,7 @@ def add_features_per_sample(sample, vocab, max_edus, tag_to_ind_map, use_def=Fal
 	feat_names = ['END-TAG-STACK1', 'END-TAG-STACK2', 'END-TAG-QUEUE1']
 	add_tag_features(features, tags_edus, feat_names, -1, tag_to_ind_map)
 
-	add_edu_features(features, tree, sample._state, split_edus, max_edus)
+	add_edu_features(features, tree, sample._state, split_edus)
 
 	vecs = gen_vectorized_features(features, vocab, tag_to_ind_map, use_def)
 	return features, vecs
@@ -79,13 +83,15 @@ def add_tag_features(features, tags_edus, feat_names, tag_loc, tag_to_ind_map):
 			if tag_loc < 0 or len(tags) > tag_loc:
 				features[feat] = tags[tag_loc]
 
-def add_edu_features(features, tree, edus_ind, split_edus, max_edus):
+def add_edu_features(features, tree, edus_ind, split_edus):
 	feat_names = ['LEN-STACK1', 'LEN-STACK2', 'LEN-QUEUE1']
+
+	num_edus = tree._root._span[1] - tree._root._span[0] + 1
 
 	for i in range(0,3):
 		feat = feat_names[i]
 		if edus_ind[i] > 0:
-			features[feat] = len(split_edus[i]) / max_edus
+			features[feat] = len(split_edus[i]) / num_edus
 		else:
 			features[feat] = 0 
 
@@ -97,13 +103,15 @@ def add_edu_features(features, tree, edus_ind, split_edus, max_edus):
 		else:
 			edu_ind_in_tree.append(0)
 
-	features['DIST-FROM-START-QUEUE1'] = (edu_ind_in_tree[2] - 1.0) / max_edus
+	max_dist = num_edus - 1
+
+	features['DIST-FROM-START-QUEUE1'] = (edu_ind_in_tree[2] - 1) / max_dist
 
 	features['DIST-FROM-END-STACK1'] = \
-		(tree._root._span[1] - edu_ind_in_tree[0]) / max_edus
+		(tree._root._span[1] - edu_ind_in_tree[0]) / max_dist
 
 	features['DIST-STACK1-QUEUE1'] = \
-		(edu_ind_in_tree[2] - edu_ind_in_tree[0]) / max_edus 
+		(edu_ind_in_tree[2] - edu_ind_in_tree[0]) / max_dist
 
 	same_sent = tree._edu_to_sent_ind[edus_ind[0]] == \
 		tree._edu_to_sent_ind[edus_ind[2]]

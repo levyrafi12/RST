@@ -71,7 +71,7 @@ class Transition(object):
 		return s.upper()
 
 def parse_files(base_path, model_name, model, trees, vocab, \
-	max_edus, y_all, tag_to_ind_map, baseline, infiles_dir, gold_files_dir, pred_outdir="pred"):
+	y_all, tag_to_ind_map, baseline, infiles_dir, gold_files_dir, pred_outdir="pred"):
 	path_to_out = create_dir(base_path, pred_outdir)
 
 	for tree in trees: 
@@ -79,7 +79,7 @@ def parse_files(base_path, model_name, model, trees, vocab, \
 		queue = Queue.read_file(fn)
 		stack = Stack()
 		root = parse_file(queue, stack, model_name, model, tree, \
-			vocab, max_edus, y_all, tag_to_ind_map, baseline)
+			vocab, y_all, tag_to_ind_map, baseline)
 		predfn = path_to_out
 		predfn += SEP
 		predfn += tree._fname
@@ -89,7 +89,7 @@ def parse_files(base_path, model_name, model, trees, vocab, \
 	eval(gold_files_dir, "pred")
 
 def parse_file(queue, stack, model_name, model, tree, \
-	vocab, max_edus, y_all, tag_to_ind_map, baseline):
+	vocab, y_all, tag_to_ind_map, baseline):
 
 	leaf_ind = 1
 	while not queue.empty() or stack.size() != 1:
@@ -100,7 +100,7 @@ def parse_file(queue, stack, model_name, model, tree, \
 			transition = most_freq_baseline(queue, stack)
 		else:
 			transition = predict_transition(queue, stack, model_name, model, \
-				tree, vocab, max_edus, y_all, tag_to_ind_map, leaf_ind)
+				tree, vocab, y_all, tag_to_ind_map, leaf_ind)
 
 		# print("queue size = {} , stack size = {} , action = {}".\
 		# format(queue.len(), stack.size(), transition.gen_str()))
@@ -136,7 +136,7 @@ def parse_file(queue, stack, model_name, model, tree, \
 	return stack.pop()
 
 def predict_transition(queue, stack, model_name, model, tree, vocab, \
-	max_edus, y_all, tag_to_ind_map, top_ind_in_queue):
+	y_all, tag_to_ind_map, top_ind_in_queue):
 	transition = Transition()
 
 	sample = Sample()
@@ -144,8 +144,7 @@ def predict_transition(queue, stack, model_name, model, tree, vocab, \
 	sample._tree = tree
 	# sample.print_info()
 
-	_, x_vecs = add_features_per_sample(sample, vocab, max_edus, 
-		tag_to_ind_map, True)
+	_, x_vecs = add_features_per_sample(sample, vocab, tag_to_ind_map, True)
 
 	if model_name == "neural":
 		pred = neural_net_predict(model, x_vecs)
