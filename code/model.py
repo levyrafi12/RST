@@ -19,6 +19,7 @@ class Network(nn.Module):
         super(Network, self).__init__()
         self.fc1 = nn.Linear(n_features, hidden_size)
         self.fc1.weight.data.fill_(1.0)
+        # nn.init.normal_(self.fc1.weight.data)
         self.fc2 = nn.Linear(hidden_size, num_classes)
         self.fc2.weight.data.fill_(1.0)
 
@@ -51,9 +52,9 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 
 		optimizer.zero_grad() # zero the gradient buffers
 		y_pred = net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
-		# scores = y_pred.data.max(1)[1]
-		# n_match = np.sum([scores[i] == y_labels[i] for i in range(len(scores))])
-		# print("num matches = {}%".format(n_match / len(scores) * 100))
+		scores = y_pred.data.max(1)[1]
+		n_match = np.sum([scores[i] == y_labels[i] for i in range(len(scores))])
+		print("num matches = {}%".format(n_match / len(scores) * 100))
 		loss = criterion(y_pred, Variable(torch.tensor(y_labels, dtype=torch.long)))
 		print("t = {} loss = {}".format(i, loss.item()))
 

@@ -91,7 +91,7 @@ def add_edu_features(features, tree, edus_ind, split_edus):
 	for i in range(0,3):
 		feat = feat_names[i]
 		if edus_ind[i] > 0:
-			features[feat] = len(split_edus[i]) / num_edus
+			features[feat] = normalized(len(split_edus[i]), num_edus)
 		else:
 			features[feat] = 0 
 
@@ -105,13 +105,13 @@ def add_edu_features(features, tree, edus_ind, split_edus):
 
 	max_dist = num_edus - 1
 
-	features['DIST-FROM-START-QUEUE1'] = (edu_ind_in_tree[2] - 1) / max_dist
+	features['DIST-FROM-START-QUEUE1'] = normalized((edu_ind_in_tree[2] - 1), max_dist)
 
 	features['DIST-FROM-END-STACK1'] = \
-		(tree._root._span[1] - edu_ind_in_tree[0]) / max_dist
+		normalized((tree._root._span[1] - edu_ind_in_tree[0]), max_dist)
 
 	features['DIST-STACK1-QUEUE1'] = \
-		(edu_ind_in_tree[2] - edu_ind_in_tree[0]) / max_dist
+		normalized((edu_ind_in_tree[2] - edu_ind_in_tree[0]), max_dist)
 
 	same_sent = tree._edu_to_sent_ind[edus_ind[0]] == \
 		tree._edu_to_sent_ind[edus_ind[2]]
@@ -127,8 +127,11 @@ def gen_vectorized_features(features, vocab, tag_to_ind_map, use_def):
 			word_ind = vocab_get(vocab, val, use_def)
 			vecs += [elem for elem in vocab._wordVectors[word_ind]]
 		elif 'TAG' in key:
-			vecs += [get_tag_ind(tag_to_ind_map, val, use_def) / n_tags]
+			vecs += [normalized(get_tag_ind(tag_to_ind_map, val, use_def), n_tags)]
 		else:
 			vecs += [val]
 		# print(len(vecs))
 	return vecs
+
+def normalized(val, max_val):
+	return val / max_val
