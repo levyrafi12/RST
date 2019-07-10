@@ -134,4 +134,4 @@ def gen_vectorized_features(features, vocab, tag_to_ind_map, use_def):
 	return vecs
 
 def normalized(val, max_val):
-	return val / max_val
+	return val / max_val - 0.5

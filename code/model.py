@@ -18,17 +18,22 @@ class Network(nn.Module):
     def __init__(self, n_features, hidden_size, num_classes):
         super(Network, self).__init__()
         self.fc1 = nn.Linear(n_features, hidden_size)
-        self.fc1.weight.data.fill_(1.0)
-        # nn.init.normal_(self.fc1.weight.data)
+        # self.fc1.weight.data.fill_(1.0)
+        nn.init.normal_(self.fc1.weight.data)
+        self.fc1.weight.data *= np.sqrt(2 / n_features)
+        self.fc1.bias.data.fill_(0.0)
         self.fc2 = nn.Linear(hidden_size, num_classes)
-        self.fc2.weight.data.fill_(1.0)
+        # self.fc2.weight.data.fill_(1.0)
+        nn.init.normal_(self.fc2.weight.data)
+        self.fc2.weight.data *= np.sqrt(2 / hidden_size)
+        self.fc2.bias.data.fill_(0.0)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
         return F.relu(self.fc2(x))
  
 def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
-	iterations=20, subset_size=5000):
+	iterations=400, subset_size=5000):
 
 	num_classes = len(ind_to_action_map)
 
@@ -43,7 +48,7 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 
 
 	criterion = nn.CrossEntropyLoss()
-	optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
+	optimizer = optim.Adam(net.parameters(), lr=lr)
 	print(optimizer)
 
 	for i in range(iterations):
@@ -62,6 +67,8 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 		optimizer.step()
 
 	print("t = {} loss = {}".format(iterations, loss.item()))
+	for param in net.parameters():
+		print(param.data)
 
 	return net
 
