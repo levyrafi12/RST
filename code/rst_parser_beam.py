@@ -14,14 +14,10 @@ from train_data import gen_state
 from model import neural_net_predict
 from model import linear_predict
 from relations_inventory import ind_to_action_map
-from preprocess import remove_dir
-from collections import deque
+from preprocess import create_dir
+from preprocess import build_infile_name
+from preprocess import SEP
 import copy
-
-correct_illegal_action = True
-print_transition = True
-
-OUTDIR = "pred"
 
 class Stack(object):
 	def __init__(self):
@@ -42,20 +38,20 @@ class Stack(object):
 	def copy(self):
 		return copy.copy(self._stack)
 
-class Queue(object):
+class Buffer(object):
 	def __init__(self):
 		self._EDUS = []
 
 	@classmethod
 	def read_file(cls, filename):
 		# print("{}".format(filename))
-		queue = Queue()
+		buffer = Buffer()
 		with open(filename) as fh:
 			for line in fh:
 				line = line.strip()
-				queue._EDUS.append(line)
-			queue._EDUS[::-1]
-		return queue
+				buffer._EDUS.append(line)
+			buffer._EDUS[::-1]
+		return buffer
 
 	def empty(self):
 		return self._EDUS == []
@@ -74,7 +70,7 @@ class Transition(object):
 		self._nuclearity = [] # <nuc>, <nuc>
 		self._relation = '' # cluster relation
 		self._action = '' # shift or 'reduce'
-		self._score = 0
+		self._score = 1 # log scale
 
 	def gen_str(self):
 		s = self._action
@@ -89,109 +85,171 @@ class Transition(object):
 
 class Parser(object):
 	def __init__(self):
-		self._queue = []
+		self._buffer = Buffer()
 		self._stack = Stack()
 		self._transitions = []
-		self._score = 0
+		self._score = 1 # path score in log scale
 		self._root = ''
-		self._leaf_ind = 1 # the EDU at the top of the queue
-		self._path_id = "1"
+		# index of EDU at the front of the buffer
+		self._leaf_ind = 1 
+		self._level = 0
 
-	def completed(self):
-		return self._queue.empty() and self._stack.size() == 1
+	def read_file(fn):
+		self._buffer = Buffer.read_file(fn)
+
+	def ended(self):
+		return self._buffer.empty() and self._stack.size() == 1
 
 	def gen_str(self):
 		s = self._transitions[-1].gen_str()
 		s += " , leaf ind "
 		s += str(self._leaf_ind)
-		s += " , toal score "
+		s += " , path score "
 		s += str(self._score)
-		s += " , path id "
-		s += self._path_id
 		return s
 
-def parse_files(base_path, gold_files_dir, model_name, model, trees, vocab, \
-	max_edus, y_all, tag_to_ind_map, infiles_dir, k_top):
-	path = base_path
+class ParsersQueue(object):
+	def __init__(self):
+		self._parsers = []
 
-	remove_dir(base_path, OUTDIR)
-	path_to_out = base_path
-	path_to_out += "\\"
-	path_to_out += OUTDIR
-	os.makedirs(path_to_out)
+	def __init__(self, fn, k_top):
+		parser = Parser()
+		parser.read_file(fn)
+		self._parsers = [parser]
+		self._ended_parsers = []
+		self._k_top = k_top
+
+	def func_key(parser):
+		return parser._score
+
+	def reduce(self):
+		self._parsers = sorted(self._parsers, key=func_key)
+		self._parsers = self._parsers[::-1]
+		self._parsers = self._parsers[:self._k_top]
+
+	def ended(self):
+		return self._parsers[0].ended()
+
+	def pop(self):
+		return self._parsers.pop(-1)
+
+def parse_files(base_path, model_name, model, trees, vocab, \
+	y_all, tag_to_ind_map, baseline, infiles_dir, \
+	k_top, pred_oudir="pred"):
+	path_to_out = create_dir(base_path, pred_outdir)
 
 	for tree in trees: 
-		fn = base_path
-		fn += "\\"
-		fn += infiles_dir
-		fn += "\\"
-		fn += tree._fname
-		fn += ".out.edus"
-		print("Parsing tree {}".format(tree._fname))
+		fn = build_infile_name(tree._fname, base_path, infiles_dir, ["out.edus", "edus"])
 		root = parse_file(fn, model_name, model, tree, vocab, max_edus, \
 			y_all, tag_to_ind_map, k_top)
 		predfn = path_to_out
-		predfn += "\\"
+		predfn += SEP
 		predfn += tree._fname
 		with open(predfn, "w") as ofh:
 			print_serial_file(ofh, root, False)
 
 	eval(gold_files_dir, "pred")
-		# n1 = count_lines(predfn) 
-		# n2 = count_lines(goldfn)
-		# print("{} {} {} {} equal: {}".format(predfn, n1, goldfn, n2, n1 == n2))
 
-def parse_file(fn, model_name, model, tree, vocab, max_edus, y_all, tag_to_ind_map, k_top):
-	best_score = 0
-	best_root = None
+def parse_file(fn, model_name, model, tree, vocab, \
+	y_all, tag_to_ind_map, baseline, k_top):
+	parsers_queue = ParsersQueue(fn, k_top)
+	level = 0
 
-	parsers = deque()
-	parsers.append(Parser())
-	parsers[0]._queue = Queue.read_file(fn)
+	while not parsers_queue.empty():
+		parser = parsers_queue.top()
 
-	while parsers:
-		parser = parsers.pop()
-		if parser.completed():
-			print("completed {}".format(parser.gen_str()))
-			if best_score < parser._score:
-				best_score = parser._score
-				best_root = parser._root
+		if (parser._level > level):
+			parsers_queue.reduce()
+			level += 1
 			continue
 
+		parser = parsers_queue.pop()
 		# transition = most_freq_baseline(queue, stack)
-		next_transitions = predict_transitions(parser._queue, parser._stack, model_name, model, \
-			tree, vocab, max_edus, y_all, tag_to_ind_map, parser._leaf_ind, k_top)
+		next_move(parsers_queue, parser, model_name, model, tree, vocab, \
+			y_all, tag_to_ind_map)
 
-		for i in range(len(next_transitions)):
-			next_transition = next_transitions[i]
-			next_parser = Parser()
-			next_parser._queue = Queue.read_file(fn)
-			next_parser._score = parser._score + next_transition._score
-			next_parser._transitions = copy.copy(parser._transitions)
-			next_parser._transitions.append(next_transition)
-			next_parser._path_id = parser._path_id
-			next_parser._path_id += ":"
-			next_parser._path_id += str(i + 1)
+	return parsers_queue.best_parser()._root
 
-			leaf_ind = 1
-			for transition in next_parser._transitions:
-				leaf_ind = apply_transition(transition, next_parser._queue, \
-					next_parser._stack, model_name, model, tree, vocab, max_edus, \
-					y_all, leaf_ind, tag_to_ind_map)
+def next_transitions(parsers_queue, parser, model_name, model, tree, vocab, \
+	y_all, tag_to_ind_map, top_ind_in_queue, k_top):
 
-			if next_parser._stack.size() > 0:
-				next_parser._root = next_parser._stack.top()
-			next_parser._leaf_ind = leaf_ind
-			parsers.appendleft(next_parser)
+	sample = Sample()
+	sample._state = gen_config(parser._queue, parser._stack, top_ind_in_queue)
+	sample._tree = tree
 
-	return best_root
+	# sample.print_info()
 
-def apply_transition(transition, queue, stack, model_name, model, tree, \
-	vocab, max_edus, y_all, leaf_ind, tag_to_ind_map):
-	if print_transition:
-		print("queue size = {} , stack size = {} , action = {}".\
-		format(queue.len(), stack.size(), transition.gen_str()))
+	_, x_vecs = add_features_per_sample(sample, vocab, \
+		tag_to_ind_map, True)
 
+	if model_name == "neural":
+		scores, indices, actions = neural_net_predict(model, x_vecs)
+	else:
+		scores, indices, actions = linear_predict(model, [x_vecs], y_all)
+
+	# print("{}".format(actions[0:parsers_queue._k_top]))
+	# print ("{}".format(scores[0:parsers_queue._k_top]))
+
+	i = 0
+	done = False
+
+	while not done:
+		action = actions[i]
+		i += 1
+
+		# illegal actions
+		if queue.len() <= 0 and action == "SHIFT":
+			continue
+
+		if stack.size() < 2 and action != "SHIFT":
+			action = "SHIFT"
+
+		if stack.size() < 2 or i >= k_top:
+			done = True
+
+		# print("action {} queue len() {}".format(action, \
+		# 	parser._buffer.len()))
+
+		transition = set_transition(action)
+		
+		if k_top > 1:
+			parsers_queue.push(copy.copy(parser))
+
+		apply_transition(parsers_queue.back(), transition)
+
+def gen_config(queue, stack, top_ind_in_queue):
+	q_temp = []
+	if queue.len() > 0: # queue contains element texts not indexes
+		q_temp.append(top_ind_in_queue)
+
+	return gen_state(stack._stack, q_temp)
+
+def gen_transition(action):
+	transition = Transition()
+
+	if action == "SHIFT":
+		transition._action = "shift"
+	else:
+		transition._action = "reduce"
+		
+		split_action = action.split("-")
+		nuc = split_action[1]
+		rel = split_action[2]
+
+		if nuc == "NS":
+			transition._nuclearity.append("Nucleus")
+			transition._nuclearity.append("Satellite")
+		elif nuc == "SN":
+			transition._nuclearity.append("Satellite")
+			transition._nuclearity.append("Nucleus")
+		else:
+			transition._nuclearity.append("Nucleus")
+			transition._nuclearity.append("Nucleus")
+		transition._relation = rel
+
+	return transition
+
+def apply_transition(parser, transition):
 	node = Node()
 	node._relation = 'SPAN'
 	if transition._action == "shift":
@@ -199,7 +257,7 @@ def apply_transition(transition, queue, stack, model_name, model, tree, \
 		node._text = queue.pop()
 		node._type = 'leaf'
 		node._span = [leaf_ind, leaf_ind]
-		leaf_ind += 1
+		parser._leaf_ind += 1
 	else:
 		r = stack.pop()
 		l = stack.pop()
@@ -215,89 +273,15 @@ def apply_transition(transition, queue, stack, model_name, model, tree, \
 			l._relation = transition._relation
 			r._relation = transition._relation
 
-		if queue.empty() and stack.size() == 0:
+		if parser._buffer.empty() and parser._stack.size() == 0:
 			node._type = "Root"
 		else:
 			node._type = "span"
 		node._span = [l._span[0], r._span[1]]
-	stack.push(node)
+	parser._stack.push(node)
 
-	return leaf_ind
-
-def predict_transitions(queue, stack, model_name, model, tree, vocab, \
-	max_edus, y_all, tag_to_ind_map, top_ind_in_queue, k_top):
-
-	sample = Sample()
-	sample._state = gen_config(queue, stack, top_ind_in_queue)
-	sample._tree = tree
-	sample.print_info()
-
-	_, x_vecs = add_features_per_sample(sample, vocab, max_edus, 
-		tag_to_ind_map, True)
-
-	if model_name == "neural":
-		scores, indices = neural_net_predict(model, x_vecs)
-		scores_actions = [(scores[i], ind_to_action_map[indices[i]]) for i in range(len(indices))]
-		print("{}".format(scores_actions[0:15]))
-	else:
-		scores, indices = linear_predict(model, [x_vecs])
-
-	transitions = []
-
-	print("k_top {}".format(k_top))
-
-	for i in range(k_top):
-		if model_name == "neural":
-			action = ind_to_action_map[indices[i]]
-		else:
-			action = ind_to_action_map[y_all[indices[i]]]
-		
-		# illegal actions
-		if stack.size() < 2 and action != "SHIFT":
-			action = "SHIFT"
-
-		elif queue.len() <= 0 and action == "SHIFT":
-			if k_top > 1:
-				continue
-			else:
-				action = ind_to_action_map[indices[-2]]
-
-		print("action {} queue len() {}".format(action, queue.len()))
-
-		transition = Transition()
-		transition._score = scores[i]
-		transitions.append(transition)
-
-		if action == "SHIFT":
-			transition._action = "shift"
-			if stack.size() < 2:
-				break
-		else:	 
-			transition._action = "reduce"
-
-			split_action = action.split("-")
-			nuc = split_action[1]
-			rel = split_action[2]
-
-			if nuc == "NS":
-				transition._nuclearity.append("Nucleus")
-				transition._nuclearity.append("Satellite")
-			elif nuc == "SN":
-				transition._nuclearity.append("Satellite")
-				transition._nuclearity.append("Nucleus")
-			else:
-				transition._nuclearity.append("Nucleus")
-				transition._nuclearity.append("Nucleus")
-			transition._relation = rel
-
-	return transitions
-
-def gen_config(queue, stack, top_ind_in_queue):
-	q_temp = []
-	if queue.len() > 0: # queue contains element texts not indexes
-		q_temp.append(top_ind_in_queue)
-
-	return gen_state(stack._stack, q_temp)
+	# print("buffer size = {} , stack size = {} , action = {}".\
+	# format(parser._buffer.len(), parser._stack.size(), transition.gen_str()))
 
 def most_freq_baseline(queue, stack):
 	transition = Transition()
