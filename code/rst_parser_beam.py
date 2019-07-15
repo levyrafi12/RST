@@ -3,6 +3,9 @@ import random
 import numpy as np
 import torch
 import os
+import sys
+
+sys.stdout.flush()
 
 from preprocess import Node
 from preprocess import print_serial_file
@@ -14,14 +17,22 @@ from train_data import gen_state
 from model import neural_net_predict
 from model import linear_predict
 from relations_inventory import ind_to_action_map
+from relations_inventory import action_to_ind_map
 from preprocess import create_dir
 from preprocess import build_infile_name
 from preprocess import SEP
 import copy
+from collections import deque
+import math
 
 class Stack(object):
 	def __init__(self):
 		self._stack = []
+
+	def __copy__(self):
+		other = Stack()
+		other._stack = copy.copy(self._stack)
+		return other
 
 	def top(self):
 		return self._stack[-1]
@@ -35,12 +46,14 @@ class Stack(object):
 	def size(self):
 		return len(self._stack)
 
-	def copy(self):
-		return copy.copy(self._stack)
-
 class Buffer(object):
 	def __init__(self):
 		self._EDUS = []
+
+	def __copy__(self):
+		other = Buffer()
+		other._EDUS = copy.copy(self._EDUS)
+		return other
 
 	@classmethod
 	def read_file(cls, filename):
@@ -62,15 +75,11 @@ class Buffer(object):
 	def len(self):
 		return len(self._EDUS)
 
-	def copy(self):
-		return copy.copy(self._EDUS)
-
 class Transition(object):
 	def __init__(self):
 		self._nuclearity = [] # <nuc>, <nuc>
 		self._relation = '' # cluster relation
 		self._action = '' # shift or 'reduce'
-		self._score = 1 # log scale
 
 	def gen_str(self):
 		s = self._action
@@ -79,69 +88,76 @@ class Transition(object):
 			s += ''.join([elem[0] for elem in self._nuclearity])
 			s += "-"
 			s += self._relation
-		s += " , score "
-		s += str(self._score)
 		return s.upper()
 
 class Parser(object):
 	def __init__(self):
 		self._buffer = Buffer()
 		self._stack = Stack()
-		self._transitions = []
-		self._score = 1 # path score in log scale
+		self._score = 0
 		self._root = ''
 		# index of EDU at the front of the buffer
 		self._leaf_ind = 1 
 		self._level = 0
 
-	def read_file(fn):
+	def __copy__(self):
+		other = Parser()
+		other._buffer = copy.copy(self._buffer)
+		other._stack = copy.copy(self._stack)
+		other._score = self._score
+		other._root = self._root
+		other._leaf_ind = self._leaf_ind
+		other._level = self._level
+		return other
+
+	def read_file(self, fn):
 		self._buffer = Buffer.read_file(fn)
 
 	def ended(self):
 		return self._buffer.empty() and self._stack.size() == 1
 
-	def gen_str(self):
-		s = self._transitions[-1].gen_str()
-		s += " , leaf ind "
-		s += str(self._leaf_ind)
-		s += " , path score "
-		s += str(self._score)
-		return s
-
 class ParsersQueue(object):
 	def __init__(self):
-		self._parsers = []
+		self._parsers = deque()
 
 	def __init__(self, fn, k_top):
 		parser = Parser()
 		parser.read_file(fn)
-		self._parsers = [parser]
-		self._ended_parsers = []
+		self._parsers = deque([parser])
 		self._k_top = k_top
 
-	def func_key(parser):
-		return parser._score
+	def len(self):
+		return len(self._parsers) 
 
 	def reduce(self):
-		self._parsers = sorted(self._parsers, key=func_key)
-		self._parsers = self._parsers[::-1]
-		self._parsers = self._parsers[:self._k_top]
+		self._parsers = deque(sorted(self._parsers, reverse=True, key=lambda x : x._score))
+		i = len(self._parsers)
+		while i > self._k_top:
+			i -= 1
+			parser = self._parsers.pop() # keep the best k parsers only
+			del(parser)
 
-	def ended(self):
-		return self._parsers[0].ended()
+	def pop_front(self):
+		return self._parsers.pop()
 
-	def pop(self):
-		return self._parsers.pop(-1)
+	def front(self):
+		return self._parsers[-1]
+
+	def back(self):
+		return self._parsers[0]
+
+	def push_back(self, parser):
+		self._parsers.appendleft(parser)
 
 def parse_files(base_path, model_name, model, trees, vocab, \
-	y_all, tag_to_ind_map, baseline, infiles_dir, \
-	k_top, pred_oudir="pred"):
+	y_all, tag_to_ind_map, baseline, infiles_dir, gold_files_dir, \
+	pred_outdir, k_top=1):
 	path_to_out = create_dir(base_path, pred_outdir)
 
 	for tree in trees: 
 		fn = build_infile_name(tree._fname, base_path, infiles_dir, ["out.edus", "edus"])
-		root = parse_file(fn, model_name, model, tree, vocab, max_edus, \
-			y_all, tag_to_ind_map, k_top)
+		root = parse_file(fn, model_name, model, tree, vocab, \
+			y_all, tag_to_ind_map, baseline, k_top)
 		predfn = path_to_out
 		predfn += SEP
 		predfn += tree._fname
@@ -153,70 +169,96 @@ def parse_files(base_path, model_name, model, trees, vocab, \
 def parse_file(fn, model_name, model, tree, vocab, \
 	y_all, tag_to_ind_map, baseline, k_top):
 	parsers_queue = ParsersQueue(fn, k_top)
+	# N shift operations + N - 1 reduce relations
+	max_level = 2 * parsers_queue.back()._buffer.len() - 1
 	level = 0
-
-	while not parsers_queue.empty():
-		parser = parsers_queue.top()
-
+	
+	while level < max_level:
+		parser = parsers_queue.front()
 		if (parser._level > level):
-			parsers_queue.reduce()
+			parsers_queue.reduce() # sort and keep the k parsers with best scores, rest are deleted
 			level += 1
 			continue
 
-		parser = parsers_queue.pop()
+		parser = parsers_queue.pop_front()
 		# transition = most_freq_baseline(queue, stack)
 		next_move(parsers_queue, parser, model_name, model, tree, vocab, \
 			y_all, tag_to_ind_map)
 
-	return parsers_queue.best_parser()._root
+	# make sure parsing indeed ended corretly
+	assert len([x for x in parsers_queue._parsers if x.ended()]) == parsers_queue.len(), \
+		"some parsers were not completed"
+	assert [x for x in parsers_queue._parsers if x._level < max_level] == [], \
+		"all parsers completed but some did not reach max level"
+	assert parsers_queue.back()._root._type == 'Root', \
+		"Bad root type"
 
-def next_transitions(parsers_queue, parser, model_name, model, tree, vocab, \
-	y_all, tag_to_ind_map, top_ind_in_queue, k_top):
+	print("final score {0:.3f}".format(parsers_queue.back()._score))
+	# parsers are sorted in descending order
+	return parsers_queue.back()._root
+
+def next_move(parsers_queue, parser, model_name, model, tree, vocab, \
+	y_all, tag_to_ind_map):
+	if parser.ended() or parsers_queue._k_top == 1:
+		parsers_queue.push_back(parser)
+		if parser.ended():
+			return
 
 	sample = Sample()
-	sample._state = gen_config(parser._queue, parser._stack, top_ind_in_queue)
+	sample._state = gen_config(parser._buffer, parser._stack, parser._leaf_ind)
 	sample._tree = tree
 
 	# sample.print_info()
 
-	_, x_vecs = add_features_per_sample(sample, vocab, \
-		tag_to_ind_map, True)
+	_, x_vecs = add_features_per_sample(sample, vocab, tag_to_ind_map, True)
 
 	if model_name == "neural":
-		scores, indices, actions = neural_net_predict(model, x_vecs)
+		scores, sorted_scores, sorted_actions = neural_net_predict(model, x_vecs)
 	else:
-		scores, indices, actions = linear_predict(model, [x_vecs], y_all)
+		assert False, "linear model not supported"  
+		# linear_predict(model, [x_vecs], y_all)
 
-	# print("{}".format(actions[0:parsers_queue._k_top]))
-	# print ("{}".format(scores[0:parsers_queue._k_top]))
+	print("next move")
+	acts_scores = list(zip(sorted_actions, sorted_scores.data.numpy()))
+	print("actions scores {}".format(acts_scores[0:max(parsers_queue._k_top, 5)]))
 
 	i = 0
 	done = False
 
 	while not done:
-		action = actions[i]
+		action = sorted_actions[i]
+		score = sorted_scores[i]
 		i += 1
 
 		# illegal actions
-		if queue.len() <= 0 and action == "SHIFT":
+		if parser._buffer.len() <= 0 and action == "SHIFT":
 			continue
 
-		if stack.size() < 2 and action != "SHIFT":
+		if parser._stack.size() < 2 and action != "SHIFT":
+			score = scores[action_to_ind_map.get("SHIFT")]
 			action = "SHIFT"
 
-		if stack.size() < 2 or i >= k_top:
+		if parser._stack.size() < 2 or i >= parsers_queue._k_top:
 			done = True
 
-		# print("action {} queue len() {}".format(action, \
-		# 	parser._buffer.len()))
-
-		transition = set_transition(action)
+		transition = gen_transition(action)
 		
-		if k_top > 1:
-			parsers_queue.push(copy.copy(parser))
+		if parsers_queue._k_top > 1:
+			parsers_queue.push_back(copy.copy(parser))
 
 		apply_transition(parsers_queue.back(), transition)
 
+		parsers_queue.back()._score += math.log(score)
+		parsers_queue.back()._level += 1
+
+		args = "path score {0:.3f} score {1:.3f} buffer size {2}"
+		args += " stack size {3} trans {4} node {5} level {6}"
+		print(args.format(parsers_queue.back()._score, math.log(score), \
+			parsers_queue.back()._buffer.len(), \
+			parsers_queue.back()._stack.size(), \
+			transition.gen_str(), parsers_queue.back()._root._type, \
+			parsers_queue.back()._level))
+				
 def gen_config(queue, stack, top_ind_in_queue):
 	q_temp = []
 	if queue.len() > 0: # queue contains element texts not indexes
@@ -254,13 +296,13 @@ def apply_transition(parser, transition):
 	node._relation = 'SPAN'
 	if transition._action == "shift":
 		# create a leaf
-		node._text = queue.pop()
+		node._text = parser._buffer.pop()
 		node._type = 'leaf'
-		node._span = [leaf_ind, leaf_ind]
+		node._span = [parser._leaf_ind, parser._leaf_ind]
 		parser._leaf_ind += 1
 	else:
-		r = stack.pop()
-		l = stack.pop()
+		r = parser._stack.pop()
+		l = parser._stack.pop()
 		node._childs.append(l)
 		node._childs.append(r)
 		l._nuclearity = transition._nuclearity[0]
@@ -279,9 +321,11 @@ def apply_transition(parser, transition):
 			node._type = "span"
 		node._span = [l._span[0], r._span[1]]
 	parser._stack.push(node)
+	parser._root = node
 
-	# print("buffer size = {} , stack size = {} , action = {}".\
-	# format(parser._buffer.len(), parser._stack.size(), transition.gen_str()))
+	# print("buffer size = {} , stack size = {} , action = {} node type {} level {}".\
+	# format(parser._buffer.len(), parser._stack.size(), transition.gen_str(), node._type,
+	# parser._level))
 
 def most_freq_baseline(queue, stack):
 	transition = Transition()

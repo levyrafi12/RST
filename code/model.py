@@ -33,19 +33,19 @@ class Network(nn.Module):
         return F.relu(self.fc2(x))
  
 def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
-	iterations=400, subset_size=5000):
+	iterations=100, subset_size=5000):
 
 	num_classes = len(ind_to_action_map)
 
 	[x_vecs, _] = extract_features(trees, samples, vocab, \
 		1, tag_to_ind_map)
 
-	print("num features {}, num classes {}, num samples {}".format(len(x_vecs[0]), num_classes, len(samples)))
+	print("num features {}, num classes {}, num samples {}".\
+		format(len(x_vecs[0]), num_classes, len(samples)))
 	print("Running neural model")
 
 	net = Network(len(x_vecs[0]), hidden_size, num_classes)
 	print(net)
-
 
 	criterion = nn.CrossEntropyLoss()
 	optimizer = optim.Adam(net.parameters(), lr=lr)
@@ -53,27 +53,36 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 
 	for i in range(iterations):
 		[x_vecs, y_labels] = extract_features(trees, samples, vocab, \
-			subset_size, tag_to_ind_map)
+			min(subset_size, len(samples)), tag_to_ind_map)
 
 		optimizer.zero_grad() # zero the gradient buffers
-		y_pred = net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
-		scores = y_pred.data.max(1)[1]
-		n_match = np.sum([scores[i] == y_labels[i] for i in range(len(scores))])
-		print("num matches = {}%".format(n_match / len(scores) * 100))
-		loss = criterion(y_pred, Variable(torch.tensor(y_labels, dtype=torch.long)))
+		# A two dimension array of size num samples * num of actions
+		scores = net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
+		# indices[i] is the predicted action (ind) of sample i 
+		indices = scores.max(1)[1] # dim=1 relates to rows, size = subset_size (batch size)
+		n_match = np.sum([indices[i] == y_labels[i] for i in range(len(indices))])
+		print("num matches = {}%".format(n_match / len(indices) * 100))
+		loss = criterion(scores, Variable(torch.tensor(y_labels, dtype=torch.long)))
 		print("t = {} loss = {}".format(i, loss.item()))
-
 		loss.backward()
 		optimizer.step()
 
 	print("t = {} loss = {}".format(iterations, loss.item()))
-	for param in net.parameters():
-		print(param.data)
+	# for param in net.parameters():
+	# print(param.data)
 
 	return net
 
 def neural_net_predict(net, x_vecs):
-	return net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
+	scores = net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
+	scores = softmax(scores)
+	[sorted_scores, indices] = scores.sort(descending=True)
+	sorted_actions = [ind_to_action_map[indices[i]] for i in range(len(indices))]
+	return [scores, sorted_scores, sorted_actions]
+
+def softmax(x):
+	numerator = (x - x.max()).exp()
+	return numerator / numerator.sum()
 
 def mini_batch_linear_model(trees, samples, y_all, vocab, \
 	max_edus, tag_to_ind_map, iterations=200, subset_size=500):

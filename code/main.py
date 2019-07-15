@@ -6,7 +6,7 @@ from preprocess import Node
 from preprocess import TreeInfo
 from train_data import Sample
 from train_data import gen_train_data
-from rst_parser import parse_files
+from rst_parser_beam import parse_files
 from model import mini_batch_linear_model 
 from model import neural_network_model
 from vocabulary import gen_vocabulary
@@ -26,11 +26,12 @@ def parse_args(argv):
 	model_name = "neural"
 	baseline = False
 	print_stats = False
+	k_top = 1
 
 	if len(argv) < 2:
-		return [model_name, baseline, print_stats]
+		return [model_name, baseline, print_stats, k_top]
 
-	cmd = "-m <linear|neural> -baseline -stats"
+	cmd = "-m <linear|neural> -baseline -stats -k_top"
 
 	if len(argv) >= 2:
 		i = 1
@@ -45,11 +46,14 @@ def parse_args(argv):
 				baseline = True
 			elif argv[i] == "-stats":
 				print_stats = True
+			elif argv[i] == "-k_top":
+				k_top = int(argv[i + 1])
+				i += 1
 			else:
 				assert False, "bad command line. Correct cmd: " + cmd
 			i += 1
 
-	return [model_name, baseline, print_stats]
+	return [model_name, baseline, print_stats, k_top]
 
 def train_model(model_name, trees, samples, y_all, vocab, tag_to_ind_map):
 	if model_name == "neural":
@@ -61,7 +65,7 @@ def train_model(model_name, trees, samples, y_all, vocab, tag_to_ind_map):
 	return model
 	
 if __name__ == '__main__':
-	[model_name, baseline, print_stats] = parse_args(sys.argv)
+	[model_name, baseline, print_stats, k_top] = parse_args(sys.argv)
 
 	print("preprocessing")
 	trees = preprocess(WORK_DIR, TRAINING_DIR)
@@ -83,4 +87,4 @@ if __name__ == '__main__':
 
 	parse_files(WORK_DIR, model_name, model, dev_trees, vocab, \
 		y_all, tag_to_ind_map, baseline, DEV_TEST_DIR, \
-		DEV_TEST_GOLD_DIR, PRED_OUTDIR)
+		DEV_TEST_GOLD_DIR, PRED_OUTDIR, k_top)
