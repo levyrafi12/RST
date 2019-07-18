@@ -16,6 +16,7 @@ from train_data import Sample
 from train_data import gen_state
 from model import neural_net_predict
 from model import linear_predict
+from model import word_encoding
 from relations_inventory import ind_to_action_map
 from relations_inventory import action_to_ind_map
 from preprocess import create_dir
@@ -150,14 +151,14 @@ class ParsersQueue(object):
 		self._parsers.appendleft(parser)
 
 def parse_files(base_path, model_name, model, trees, vocab, \
-	y_all, tag_to_ind_map, baseline, infiles_dir, gold_files_dir, \
+	tag_to_ind_map, baseline, infiles_dir, gold_files_dir, \
 	pred_outdir, k_top=1):
 	path_to_out = create_dir(base_path, pred_outdir)
 
 	for tree in trees: 
 		fn = build_infile_name(tree._fname, base_path, infiles_dir, ["out.edus", "edus"])
 		root = parse_file(fn, model_name, model, tree, vocab, \
-			y_all, tag_to_ind_map, baseline, k_top)
+			tag_to_ind_map, baseline, k_top)
 		predfn = path_to_out
 		predfn += SEP
 		predfn += tree._fname
@@ -167,7 +168,7 @@ def parse_files(base_path, model_name, model, trees, vocab, \
 	eval(gold_files_dir, "pred")
 
 def parse_file(fn, model_name, model, tree, vocab, \
-	y_all, tag_to_ind_map, baseline, k_top):
+	tag_to_ind_map, baseline, k_top):
 	parsers_queue = ParsersQueue(fn, k_top)
 	# N shift operations + N - 1 reduce relations
 	max_level = 2 * parsers_queue.back()._buffer.len() - 1
@@ -181,9 +182,8 @@ def parse_file(fn, model_name, model, tree, vocab, \
 			continue
 
 		parser = parsers_queue.pop_front()
-		# transition = most_freq_baseline(queue, stack)
 		next_move(parsers_queue, parser, model_name, model, tree, vocab, \
-			y_all, tag_to_ind_map)
+			tag_to_ind_map, baseline)
 
 	# make sure parsing indeed ended corretly
 	assert len([x for x in parsers_queue._parsers if x.ended()]) == parsers_queue.len(), \
@@ -193,15 +193,17 @@ def parse_file(fn, model_name, model, tree, vocab, \
 	assert parsers_queue.back()._root._type == 'Root', \
 		"Bad root type"
 
-	print("final score {0:.3f}".format(parsers_queue.back()._score))
+	# print("final score {0:.3f}".format(parsers_queue.back()._score))
 	# parsers are sorted in descending order
 	return parsers_queue.back()._root
 
-def next_move(parsers_queue, parser, model_name, model, tree, vocab, \
-	y_all, tag_to_ind_map):
+def next_move(parsers_queue, parser, model_name, model, tree, vocab, tag_to_ind_map, baseline):
 	if parser.ended() or parsers_queue._k_top == 1:
 		parsers_queue.push_back(parser)
-		if parser.ended():
+		if baseline:
+			transition = most_freq_baseline(parser)
+			apply_transition(parser, transition)
+		if parser.ended() or baseline:
 			return
 
 	sample = Sample()
@@ -210,17 +212,12 @@ def next_move(parsers_queue, parser, model_name, model, tree, vocab, \
 
 	# sample.print_info()
 
-	_, x_vecs = add_features_per_sample(sample, vocab, tag_to_ind_map, True)
+	_, x_vecs = add_features_per_sample(sample, vocab, tag_to_ind_map, \
+		word_encoding(model_name), True)
 
-	if model_name == "neural":
-		scores, sorted_scores, sorted_actions = neural_net_predict(model, x_vecs)
-	else:
-		assert False, "linear model not supported"  
-		# linear_predict(model, [x_vecs], y_all)
-
-	print("next move")
-	acts_scores = list(zip(sorted_actions, sorted_scores.data.numpy()))
-	print("actions scores {}".format(acts_scores[0:max(parsers_queue._k_top, 5)]))
+	# print("next move")
+	scores, sorted_scores, sorted_actions = evaluate(model, model_name, x_vecs, \
+		parsers_queue._k_top)
 
 	i = 0
 	done = False
@@ -230,10 +227,11 @@ def next_move(parsers_queue, parser, model_name, model, tree, vocab, \
 		score = sorted_scores[i]
 		i += 1
 
-		# illegal actions
+		# illegal move
 		if parser._buffer.len() <= 0 and action == "SHIFT":
 			continue
 
+		# fix illegal move
 		if parser._stack.size() < 2 and action != "SHIFT":
 			score = scores[action_to_ind_map.get("SHIFT")]
 			action = "SHIFT"
@@ -248,17 +246,27 @@ def next_move(parsers_queue, parser, model_name, model, tree, vocab, \
 
 		apply_transition(parsers_queue.back(), transition)
 
-		parsers_queue.back()._score += math.log(score)
+		parsers_queue.back()._score += score
 		parsers_queue.back()._level += 1
 
+		"""
 		args = "path score {0:.3f} score {1:.3f} buffer size {2}"
 		args += " stack size {3} trans {4} node {5} level {6}"
-		print(args.format(parsers_queue.back()._score, math.log(score), \
+		print(args.format(parsers_queue.back()._score, score, \
 			parsers_queue.back()._buffer.len(), \
 			parsers_queue.back()._stack.size(), \
 			transition.gen_str(), parsers_queue.back()._root._type, \
 			parsers_queue.back()._level))
-				
+		"""
+
+def evaluate(model, model_name, x_vecs, k_top):
+	if model_name == "neural":
+		scores, sorted_scores, sorted_actions = neural_net_predict(model, x_vecs)
+	else: 
+		scores, sorted_scores, sorted_actions = linear_predict(model, [x_vecs])
+	
+	return scores, sorted_scores, sorted_actions 
+
 def gen_config(queue, stack, top_ind_in_queue):
 	q_temp = []
 	if queue.len() > 0: # queue contains element texts not indexes
@@ -327,12 +335,16 @@ def apply_transition(parser, transition):
 	# format(parser._buffer.len(), parser._stack.size(), transition.gen_str(), node._type,
 	# parser._level))
 
-def most_freq_baseline(queue, stack):
+def most_freq_baseline(parser):
+	parser._level += 1
+	buffer = parser._buffer
+	stack = parser._stack
+
 	transition = Transition()
 
 	if stack.size() < 2:
 		transition._action = "shift"
-	elif not queue.empty():
+	elif not buffer.empty():
 		actions = ["shift", "reduce"]
 		ind = random.randint(0,1)
 		transition._action = actions[ind]

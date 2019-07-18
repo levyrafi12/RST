@@ -45,6 +45,7 @@ def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", pr
 		n_founds = 0
 		for key, val in vocab._tokens.items():
 			found = False
+			# a token has a zeros vector if that token did not exist in glove   
 			if list(vocab._wordVectors[val]).count(0) < len(vocab._wordVectors[val]):
 				found = True
 				n_founds += 1
@@ -63,6 +64,11 @@ def split_edu_to_tokens(tree, edu_ind):
 def split_edu_to_tags(tree, edu_ind):
 	word_tag_list = tree._edu_word_tag_table[edu_ind]
 	return [tag for _, tag in word_tag_list]
+
+def gen_one_hot_vector(vocab, ind):
+	vec = len(vocab._tokens) * [0]
+	vec[ind] = 1
+	return vec
 
 def gen_bag_of_words(vocab, EDUS_table, edu_ind):
 	zeros = []

@@ -7,19 +7,18 @@ from preprocess import TreeInfo
 from train_data import Sample
 from train_data import gen_train_data
 from rst_parser_beam import parse_files
-from model import mini_batch_linear_model 
-from model import neural_network_model
+from model import train_model
 from vocabulary import gen_vocabulary
 from preprocess import print_trees_stats
 
 import sys
 
 # Directories variables
-WORK_DIR = "." # current dir 
+WORK_DIR = "." # current working dir
 TRAINING_DIR = "..\\dataset\\TRAINING" # directory of the training dataset
 DEV_TEST_DIR = "..\\dataset\\DEV" # directory of input dev/test dataset
-DEV_TEST_GOLD_DIR = "dev_gold" # dir of the output golden serial trees of dev/test dataset
-PRED_OUTDIR = "pred" # directory of the generated predicted serial trees
+DEV_TEST_GOLD_DIR = "..\\work\\dev_gold" # dir of the output golden serial trees of dev/test dataset
+PRED_OUTDIR = "..\\work\\pred" # directory of the generated predicted serial trees
 GLOVE_DIR = "..\\glove" # in which the glove embedding vectors file exists (glove.6B.50d.txt)
 
 def parse_args(argv):
@@ -53,16 +52,10 @@ def parse_args(argv):
 				assert False, "bad command line. Correct cmd: " + cmd
 			i += 1
 
+	if baseline and k_top > 1:
+		assert False, "-k_top must be 1 when running with -baseline"
+
 	return [model_name, baseline, print_stats, k_top]
-
-def train_model(model_name, trees, samples, y_all, vocab, tag_to_ind_map):
-	if model_name == "neural":
-		model = neural_network_model(trees, samples, vocab, tag_to_ind_map)
-	else:
-		model = mini_batch_linear_model(trees, samples, y_all, vocab, \
-			tag_to_ind_map)
-
-	return model
 	
 if __name__ == '__main__':
 	[model_name, baseline, print_stats, k_top] = parse_args(sys.argv)
@@ -75,16 +68,14 @@ if __name__ == '__main__':
 	[vocab, tag_to_ind_map] = gen_vocabulary(trees, WORK_DIR, TRAINING_DIR, GLOVE_DIR)
 
 	model = '' # model data structure
-	y_all = '' # for the linear model, y labels are computed dynamically
 	if not baseline:
 		print("training..")
 		[samples, y_all] = gen_train_data(trees, WORK_DIR)
-		model = train_model(model_name, trees, samples, y_all, \
-			vocab, tag_to_ind_map)
+		model = train_model(model_name, trees, samples, vocab, tag_to_ind_map)
 
 	print("evaluate..")
 	dev_trees = preprocess(WORK_DIR, DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
 
 	parse_files(WORK_DIR, model_name, model, dev_trees, vocab, \
-		y_all, tag_to_ind_map, baseline, DEV_TEST_DIR, \
+		tag_to_ind_map, baseline, DEV_TEST_DIR, \
 		DEV_TEST_GOLD_DIR, PRED_OUTDIR, k_top)

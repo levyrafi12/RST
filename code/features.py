@@ -5,11 +5,12 @@ from vocabulary import split_edu_to_tokens
 from vocabulary import vocab_get
 from vocabulary import DEFAULT_TOKEN # empty string
 from vocabulary import get_tag_ind
+from vocabulary import gen_one_hot_vector
 import numpy as np
 
 import random
 
-def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map):
+def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, word_encoding='embedd'):
 	x_vecs = []
 	y_labels = []
 
@@ -18,13 +19,15 @@ def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map):
 
 	for i in range(subset_size):
 		sample_ind = rand_samples[i]
-		_, vec_feats = add_features_per_sample(samples[sample_ind], vocab, tag_to_ind_map)
+		_, vec_feats = add_features_per_sample(samples[sample_ind], vocab, tag_to_ind_map, \
+			word_encoding)
 		x_vecs.append(vec_feats)
 		y_labels.append(action_to_ind_map[samples[sample_ind]._action])
 
 	return [x_vecs, y_labels]
 
-def add_features_per_sample(sample, vocab, tag_to_ind_map, use_def=False):
+def add_features_per_sample(sample, vocab, tag_to_ind_map, word_encoding='embedd', \
+	use_def=False):
 	features = {}
 	feat_names = []
 	split_edus = []
@@ -61,7 +64,7 @@ def add_features_per_sample(sample, vocab, tag_to_ind_map, use_def=False):
 
 	add_edu_features(features, tree, sample._state, split_edus)
 
-	vecs = gen_vectorized_features(features, vocab, tag_to_ind_map, use_def)
+	vecs = gen_vectorized_features(features, vocab, tag_to_ind_map, word_encoding, use_def)
 	return features, vecs
 
 def add_word_features(features, split_edus, feat_names, word_loc):
@@ -118,14 +121,13 @@ def add_edu_features(features, tree, edus_ind, split_edus):
 
 	features['SAME-SENT-STACK1-QUEUE1'] = 1 if same_sent else 0
 
-def gen_vectorized_features(features, vocab, tag_to_ind_map, use_def):
+def gen_vectorized_features(features, vocab, tag_to_ind_map, word_encoding, use_def):
 	vecs = []
 	n_tags = len(tag_to_ind_map) - 1
 	for key, val in features.items():
 		# print("key {} val {}".format(key, val))
 		if 'WORD' in key:
-			word_ind = vocab_get(vocab, val, use_def)
-			vecs += [elem for elem in vocab._wordVectors[word_ind]]
+			vecs += gen_word_vectorized_feat(vocab, val, word_encoding, use_def)
 		elif 'TAG' in key:
 			vecs += [normalized(get_tag_ind(tag_to_ind_map, val, use_def), n_tags)]
 		else:
@@ -134,4 +136,12 @@ def gen_vectorized_features(features, vocab, tag_to_ind_map, use_def):
 	return vecs
 
 def normalized(val, max_val):
-	return val / max_val - 0.5
+	return val / max_val
+
+def gen_word_vectorized_feat(vocab, val, word_encoding, use_def):
+	word_ind = vocab_get(vocab, val, use_def)
+	if word_encoding == 'embedd':
+		vec = [elem for elem in vocab._wordVectors[word_ind]]
+	else:
+		vec = gen_one_hot_vector(vocab, word_ind)
+	return vec
