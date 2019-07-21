@@ -6,20 +6,13 @@ from preprocess import Node
 from preprocess import TreeInfo
 from train_data import Sample
 from train_data import gen_train_data
-from rst_parser_beam import parse_files
+from rst_parser import evaluate
 from model import train_model
 from vocabulary import gen_vocabulary
 from preprocess import print_trees_stats
+from defs import *
 
 import sys
-
-# Directories variables
-WORK_DIR = "." # current working dir
-TRAINING_DIR = "..\\dataset\\TRAINING" # directory of the training dataset
-DEV_TEST_DIR = "..\\dataset\\DEV" # directory of input dev/test dataset
-DEV_TEST_GOLD_DIR = "..\\work\\dev_gold" # dir of the output golden serial trees of dev/test dataset
-PRED_OUTDIR = "..\\work\\pred" # directory of the generated predicted serial trees
-GLOVE_DIR = "..\\glove" # in which the glove embedding vectors file exists (glove.6B.50d.txt)
 
 def parse_args(argv):
 	model_name = "neural"
@@ -30,7 +23,7 @@ def parse_args(argv):
 	if len(argv) < 2:
 		return [model_name, baseline, print_stats, k_top]
 
-	cmd = "-m <linear|neural> -baseline -stats -k_top"
+	cmd = "-m <dplp_A_0|dplp_A_I||neural> -baseline -stats -k_top"
 
 	if len(argv) >= 2:
 		i = 1
@@ -38,8 +31,8 @@ def parse_args(argv):
 			if argv[i] == "-m":
 				assert (i + 1) < len(argv), "Model name is missing. Correct cmd: " + cmd 
 				model_name = argv[i + 1]
-				assert model_name == "linear" or model_name == "neural", \
-					"Bad model name: " + argv[i + 1] + " Use linear|neural"
+				assert model_name == "dplp_A_0" or model_name == "dplp_A_I" or model_name == "neural", \
+					"Bad model name: " + argv[i + 1] + " Use dplp_A_0|dplp_A_I|neural"
 				i += 1
 			elif argv[i] == "-baseline":
 				baseline = True
@@ -74,8 +67,4 @@ if __name__ == '__main__':
 		model = train_model(model_name, trees, samples, vocab, tag_to_ind_map)
 
 	print("evaluate..")
-	dev_trees = preprocess(WORK_DIR, DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
-
-	parse_files(WORK_DIR, model_name, model, dev_trees, vocab, \
-		tag_to_ind_map, baseline, DEV_TEST_DIR, \
-		DEV_TEST_GOLD_DIR, PRED_OUTDIR, k_top)
+	evaluate(model_name, model, vocab, tag_to_ind_map, baseline, k_top)
