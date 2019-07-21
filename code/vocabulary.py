@@ -66,20 +66,20 @@ def split_edu_to_tags(tree, edu_ind):
 	return [tag for _, tag in word_tag_list]
 
 def gen_one_hot_vector(vocab, ind):
+	"""
+		generate one hot vector for a token ind (word)
+	""" 
 	vec = len(vocab._tokens) * [0]
 	vec[ind] = 1
 	return vec
 
-def gen_bag_of_words(vocab, EDUS_table, edu_ind):
-	zeros = []
-	for i in range(len(vocab._tokens)):
-		zeros.append(0)
-
+def gen_bag_of_words(tree, vocab, edu_ind):
+	zeros = len(vocab._tokens) * [0]
 	if edu_ind == 0:
 		return zeros
 
 	vec = zeros
-	tokens = split_edu_to_tokens(vocab, EDUS_table, edu_ind)
+	tokens = split_edu_to_tokens(tree, edu_ind)
 	for token in tokens:
 		ind = vocab_get(vocab, token)
 		vec[ind] += 1

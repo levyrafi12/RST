@@ -127,7 +127,7 @@ def add_edu_features(features, tree, edus_ind, split_edus, vocab, bag_of_words=F
 		feat_names = ['EDU-STACK1', 'EDU-STACK2', 'EDU-QUEUE']
 		for i in range(0,3):
 			feat = feat_names[i]
-			features[feat] = gen_bag_of_words(vocab, tree._EDUS_table, edu_ind[i])
+			features[feat] = gen_bag_of_words(tree, vocab, edus_ind[i])
 
 def gen_vectorized_features(features, vocab, tag_to_ind_map, word_encoding, use_def):
 	vecs = []
@@ -138,6 +138,8 @@ def gen_vectorized_features(features, vocab, tag_to_ind_map, word_encoding, use_
 			vecs += gen_word_vectorized_feat(vocab, val, word_encoding, use_def)
 		elif 'TAG' in key:
 			vecs += [normalized(get_tag_ind(tag_to_ind_map, val, use_def), n_tags)]
+		elif 'EDU' in key:
+			vecs += val
 		else:
 			vecs += [val]
 		# print(len(vecs))

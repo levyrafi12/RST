@@ -49,11 +49,12 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 	n_epoch=10, subset_size=64, print_every=1):
 
 	num_classes = len(ind_to_action_map)
+	subset_size = min(subset_size, len(samples))
 
 	[x_vecs, _] = extract_features(trees, samples, vocab, 1, tag_to_ind_map)
 
-	print("num features {}, num classes {}, num samples {}".\
-		format(len(x_vecs[0]), num_classes, len(samples)))
+	print("num features {}, num classes {}, num samples {} subset size {}".\
+		format(len(x_vecs[0]), num_classes, len(samples), subset_size))
 	print("Running neural model")
 
 	net = Network(len(x_vecs[0]), hidden_size, num_classes)
@@ -64,7 +65,6 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 	print(optimizer)
 
 	n_match = 0
-	subset_size = min(subset_size, len(samples))
 	n_subsets = math.ceil(len(samples) / subset_size)
 	n_samples_in_epoch = subset_size * n_subsets
 
@@ -95,39 +95,41 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 	return net
 
 def linear_model(trees, samples, vocab, tag_to_ind_map, \
-	model_name, n_epoch=100, subset_size=500, print_every=1):
+	model_name, n_epoch=10, subset_size=32, print_every=1):
 
 	[x_vecs, _] = extract_features(trees, samples, vocab, 1, tag_to_ind_map, \
-		get_word_encoding(model_name), is_bag_of_words(model_name))
+		is_bag_of_words(model_name), get_word_encoding(model_name))
 
 	y_all = list(range(len(ind_to_action_map)))
+	subset_size = min(subset_size, len(samples))
 
-	print("num features {}, num classes {}, num samples {}".\
-		format(len(x_vecs[0]), len(y_all), len(samples)))
+	print("num features {}, num classes {}, num samples {} subset size {}".\
+		format(len(x_vecs[0]), len(y_all), len(samples), subset_size))
 
-	print("Running {} model".format(model_name))
+	print("Running {} model 'word encoding' {} 'bag of words' {}".\
+		format(model_name, get_word_encoding(model_name), \
+		is_bag_of_words(model_name)))
 
 	clf = sklearn.linear_model.SGDClassifier()
 	print(clf)
 
 	n_match = 0
-	subset_size = min(subset_size, len(samples))
 	n_subsets = math.ceil(len(samples) / subset_size)
 	n_samples_in_epoch = n_subsets * subset_size
 
 	for epoch in range(1, n_epoch + 1):
 		for i in range(n_subsets):
 			[x_vecs, y_labels] = extract_features(trees, samples, vocab, \
-				subset_size, tag_to_ind_map, get_word_encoding(model_name),\
-				is_bag_of_words(model_name))
+				subset_size, tag_to_ind_map, is_bag_of_words(model_name),\
+				get_word_encoding(model_name))
 
 			clf.partial_fit(x_vecs, y_labels, y_all)
 			y_pred = clf.predict(x_vecs)
 			n_match += np.sum([y_pred[j] == y_labels[j] for j in range(len(y_labels))])
 		if epoch % print_every == 0:
-			print("mini batch iter {0} num matches {1:.3f}%".format(\
+			print("epoch {0} num matches {1:.3f}%".format(\
 				epoch, n_match / n_samples_in_epoch * 100))
 			n_match = 0
-		evaluate("linear", clf, vocab, tag_to_ind_map)
+		evaluate(model_name, clf, vocab, tag_to_ind_map)
 
 	return clf

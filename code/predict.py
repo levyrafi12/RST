@@ -16,7 +16,7 @@ def predict(model, model_name, x_vecs):
 	if model_name == 'neural':
 		return neural_net_predict(model, x_vecs) 
 	return linear_predict(model, x_vecs)
-	
+
 def neural_net_predict(net, x_vecs):
 	scores = net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
 	scores = log_softmax(scores)
@@ -29,7 +29,7 @@ def log_softmax(x):
 	return torch.log(numerator / numerator.sum())
 
 def linear_predict(clf, x_vecs):
-	scores = clf.decision_function(x_vecs)[0]
+	scores = clf.decision_function([x_vecs])[0]
 	sorted_scores = np.sort(scores)[::-1]
 	indices = clf.classes_[np.argsort(scores)][::-1]
 	sorted_actions = [ind_to_action_map[indices[i]] for i in range(len(indices))]
