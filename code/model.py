@@ -84,7 +84,7 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 
 			n_match += np.sum([indices[j] == y_labels[j] for j in range(len(indices))])
 		if epoch % print_every == 0:
-			print("t {0} num matches = {1:.3f}% loss {2:.3f}".\
+			print("epoch {0} num matches = {1:.3f}% loss {2:.3f}".\
 				format(epoch, n_match / n_samples_in_epoch * 100, loss.item()))
 			n_match = 0
 		evaluate("neural", net, vocab, tag_to_ind_map)

@@ -26,6 +26,7 @@ from preprocess import SEP
 from defs import *
 import copy
 from collections import deque
+from collections import defaultdict
 import math
 
 class Stack(object):
@@ -158,6 +159,10 @@ def evaluate(model_name, model, vocab, tag_to_ind_map, baseline=False, k_top=1):
 
 def parse_files(model_name, model, trees, vocab, tag_to_ind_map, baseline, k_top):
 	path_to_out = create_dir(WORK_DIR, PRED_OUTDIR)
+	global wrong_decisions 
+	wrong_decisions = defaultdict(int)
+	global total_decisions
+	total_decisions = 0
 
 	for tree in trees: 
 		fn = build_infile_name(tree._fname, WORK_DIR, DEV_TEST_DIR, ["out.edus", "edus"])
@@ -176,6 +181,9 @@ def parse_file(fn, model_name, model, tree, vocab, \
 	parsers_queue = ParsersQueue(fn, k_top)
 	# N shift operations + N - 1 reduce relations
 	max_level = 2 * parsers_queue.back()._buffer.len() - 1
+	global wrong_decisions
+	global total_decisions
+	total_decisions += max_level
 	level = 0
 	
 	while level < max_level:
@@ -197,6 +205,9 @@ def parse_file(fn, model_name, model, tree, vocab, \
 	assert parsers_queue.back()._root._type == 'Root', \
 		"Bad root type"
 
+	print("wrong decisions: SHIFT when buf empty {} REDUCE when stack size < 2 {} tot decisions {}".\
+		format(wrong_decisions["SHIFT"], wrong_decisions["REDUCE"], total_decisions))
+
 	# print("final score {0:.3f}".format(parsers_queue.back()._score))
 	# parsers are sorted in descending order
 	return parsers_queue.back()._root
@@ -214,6 +225,7 @@ def next_move(parsers_queue, parser, model_name, model, tree, vocab, tag_to_ind_
 	sample._state = gen_config(parser._buffer, parser._stack, parser._leaf_ind)
 	sample._tree = tree
 
+	global wrong_decisions
 	# sample.print_info()
 
 	_, x_vecs = add_features_per_sample(sample, vocab, tag_to_ind_map, \
@@ -232,12 +244,14 @@ def next_move(parsers_queue, parser, model_name, model, tree, vocab, tag_to_ind_
 
 		# illegal move
 		if parser._buffer.len() <= 0 and action == "SHIFT":
+			wrong_decisions["SHIFT"] += 1
 			continue
 
 		# fix illegal move
 		if parser._stack.size() < 2 and action != "SHIFT":
 			score = scores[action_to_ind_map.get("SHIFT")]
 			action = "SHIFT"
+			wrong_decisions["REDUCE"] += 1
 
 		if parser._stack.size() < 2 or i >= parsers_queue._k_top:
 			done = True

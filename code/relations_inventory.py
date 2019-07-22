@@ -67,18 +67,37 @@ cluster_rels_list = ["ATTRIBUTION", "BACKGROUND", "CAUSE", "COMPARISON",
 	"EVALUATION", "EXPLANATION", "JOINT", "MANNERMEANS", "SUMMARY", "TEMPORAL",
 	"TOPICCHANGE", "SAME-UNIT", "TEXTUALORGANIZATION"]
 
+cluster_mono_nuc_rels_list = ['ATTRIBUTION', 'BACKGROUND', 'CAUSE', 'COMPARISON', 
+	'CONDITION', 'CONTRAST', 'ELABORATION', 'ENABLEMENT', 'TOPICCOMMENT', 'TEMPORAL',
+	'EVALUATION', 'EXPLANATION', 'MANNERMEANS',
+	'SUMMARY', 'TOPICCHANGE']
+
+cluster_multi_nuc_rels_list = ['CAUSE', 'COMPARISON', 'CONDITION', 'CONTRAST', 
+	'TOPICCOMMENT', 'EVALUATION', 'EXPLANATION', 'JOINT', 'TEMPORAL', 'TOPICCHANGE', 
+	'TEXTUALORGANIZATION', 'SAME-UNIT']
+ 
+def build_reduce_action(rel, nuc):
+	key = 'REDUCE'
+	key += "-"
+	key += nuc
+	key += "-"
+	key += rel	
+	return key
+
 def build_parser_action_to_ind_mapping():
 	ind = 0
-	for rel in cluster_rels_list:
-		for nuc in ['NN', 'NS', 'SN']:
-			key = 'REDUCE'
-			key += "-"
-			key += nuc
-			key += "-"
-			key += rel				
+	for rel in cluster_mono_nuc_rels_list:
+		for nuc in ['NS', 'SN']:
+			key = build_reduce_action(rel, nuc)		
 			action_to_ind_map[key] = ind
 			ind_to_action_map.append(key)
 			ind += 1
+
+	for rel in cluster_multi_nuc_rels_list:
+		key = build_reduce_action(rel, 'NN')		
+		action_to_ind_map[key] = ind
+		ind_to_action_map.append(key)
+		ind += 1
 
 	action_to_ind_map["SHIFT"] = ind
 	ind_to_action_map.append("SHIFT")
