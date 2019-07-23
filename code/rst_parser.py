@@ -159,7 +159,7 @@ def evaluate(model_name, model, vocab, tag_to_ind_map, baseline=False, k_top=1):
 
 def parse_files(model_name, model, trees, vocab, tag_to_ind_map, baseline, k_top):
 	path_to_out = create_dir(WORK_DIR, PRED_OUTDIR)
-	
+
 	for tree in trees: 
 		fn = build_infile_name(tree._fname, WORK_DIR, DEV_TEST_DIR, ["out.edus", "edus"])
 		root = parse_file(fn, model_name, model, tree, vocab, \
