@@ -3,13 +3,17 @@ from preprocess import TreeInfo
 from utils import map_to_cluster
 from glove import loadWordVectors
 from relations_inventory import action_to_ind_map
+from relations_inventory import ind_to_action_map
 from vocabulary import gen_vocabulary
 from preprocess import build_file_name
 from preprocess import SEP
 
 import glob
 import copy
+
 import numpy as np
+
+import sys
 
 class Sample(object):
 	def __init__(self):
@@ -50,6 +54,8 @@ def gen_train_data(trees, path, print_data=False):
 
 	y_all = [action_to_ind_map[samples[i]._action] for i in range(len(samples))]
 	y_all = np.unique(y_all)
+
+	sys.stdout.flush()
 
 	return [samples, y_all]
 					

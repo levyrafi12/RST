@@ -64,7 +64,7 @@ def add_features_per_sample(sample, vocab, tag_to_ind_map, bag_of_words=False, \
 	feat_names = ['END-TAG-STACK1', 'END-TAG-STACK2', 'END-TAG-QUEUE1']
 	add_tag_features(features, tags_edus, feat_names, -1, tag_to_ind_map)
 
-	add_edu_features(features, tree, sample._state, split_edus, vocab, bag_of_words)
+	add_edu_features(features, tree, sample._state, split_edus, vocab, bag_of_words, use_def)
 
 	vecs = gen_vectorized_features(features, vocab, tag_to_ind_map, word_encoding, use_def)
 	return features, vecs
@@ -88,7 +88,7 @@ def add_tag_features(features, tags_edus, feat_names, tag_loc, tag_to_ind_map):
 			if tag_loc < 0 or len(tags) > tag_loc:
 				features[feat] = tags[tag_loc]
 
-def add_edu_features(features, tree, edus_ind, split_edus, vocab, bag_of_words=False):
+def add_edu_features(features, tree, edus_ind, split_edus, vocab, bag_of_words=False, use_def=False):
 	feat_names = ['LEN-STACK1', 'LEN-STACK2', 'LEN-QUEUE1']
 
 	num_edus = tree._root._span[1] - tree._root._span[0] + 1
@@ -127,7 +127,7 @@ def add_edu_features(features, tree, edus_ind, split_edus, vocab, bag_of_words=F
 		feat_names = ['EDU-STACK1', 'EDU-STACK2', 'EDU-QUEUE']
 		for i in range(0,3):
 			feat = feat_names[i]
-			features[feat] = gen_bag_of_words(tree, vocab, edus_ind[i])
+			features[feat] = gen_bag_of_words(tree, vocab, edus_ind[i], use_def)
 
 def gen_vectorized_features(features, vocab, tag_to_ind_map, word_encoding, use_def):
 	vecs = []

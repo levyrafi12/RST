@@ -73,7 +73,7 @@ def gen_one_hot_vector(vocab, ind):
 	vec[ind] = 1
 	return vec
 
-def gen_bag_of_words(tree, vocab, edu_ind):
+def gen_bag_of_words(tree, vocab, edu_ind, use_def_word=False):
 	zeros = len(vocab._tokens) * [0]
 	if edu_ind == 0:
 		return zeros
@@ -81,7 +81,7 @@ def gen_bag_of_words(tree, vocab, edu_ind):
 	vec = zeros
 	tokens = split_edu_to_tokens(tree, edu_ind)
 	for token in tokens:
-		ind = vocab_get(vocab, token)
+		ind = vocab_get(vocab, token, use_def_word)
 		vec[ind] += 1
 	return vec	
 
