@@ -1,3 +1,6 @@
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 from nltk.parse.corenlp import CoreNLPServer
 import os
 
