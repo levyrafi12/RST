@@ -68,6 +68,8 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 	n_subsets = math.ceil(len(samples) / subset_size)
 	n_samples_in_epoch = subset_size * n_subsets
 
+	# grad_updates = n_epoch * (n_samples / subset_size)
+
 	for epoch in range(1, n_epoch + 1):
 		for i in range(n_subsets):
 			[x_vecs, y_labels] = extract_features(trees, samples, vocab, \
