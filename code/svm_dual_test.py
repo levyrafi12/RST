@@ -5,21 +5,61 @@ from sklearn import svm
 from sklearn import multiclass
 import numpy as np
 
-X = [[0,1], [1,1], [2,1], [3,3]]
+def class_w_max_votes(dec, n_classes):
+	votes = np.zeros(n_classes)
+
+	k = 0
+	for i in range(n_classes):
+		for j in range(i + 1, n_classes):
+			if dec[k] > 0:
+				votes[i] += 1
+			else:
+				votes[j] += 1
+		k += 1
+
+	return np.argmax(votes)
+
+X = [[0], [1], [2], [3]]
 Y = [0, 1, 2, 3]
+
+test_x = [[4]]
+n_classes = len(np.unique(Y))
+
 clf = svm.SVC(kernel='linear', decision_function_shape='ovo', probability=True)
+"""
+clf1 = multiclass.OneVsRestClassifier(clf)
+print(clf1)
+
+clf1.fit(X, Y)
+print(clf1.coef_)
+print(clf1.intercept_)
+dec = clf1.decision_function([[0]])
+print(dec)
+"""
+
 clf.fit(X, Y)
+"""
 print(clf.coef_)
 print(clf.intercept_)
 print(clf.dual_coef_)
 print(clf.support_vectors_)
 print(clf.support_)
 print(clf.n_support_)
-dec = clf.decision_function([[3,3]])
-print(dec)
+"""
+
+dec = clf.decision_function(test_x)
+pred = clf.predict(test_x)
+print("dec {}".format(dec))
+print("pred {}".format(pred))
+print("class {}".format(class_w_max_votes(dec[0,:], n_classes)))
+
 clf.decision_function_shape = "ovr"
-dec = clf.decision_function([[3,3]])
-print(dec)
+dec = clf.decision_function(test_x)
+pred = clf.predict(test_x)
+print("dec {}".format(dec))
+print("pred {}".format(pred))
+
+print("sum dual coef {}".format(clf.dual_coef_.sum()))
 
 n_class = len(np.unique(Y))
 n_features = len(X[0])
@@ -53,5 +93,6 @@ for i in range(n_class):
 		row += 1
 
 assert clf.coef_.all() == w.all(), "matrices differ from each other"
+
 
 

@@ -11,6 +11,7 @@ from features import get_word_encoding
 from features import is_bag_of_words
 from relations_inventory import ind_to_action_map
 from rst_parser import evaluate
+from dplp import dplp_algo
 
 import sklearn
 import math
@@ -18,9 +19,10 @@ import math
 def train_model(model_name, trees, samples, vocab, tag_to_ind_map):
 	if model_name == "neural":
 		model = neural_network_model(trees, samples, vocab, tag_to_ind_map)
-	else: 
+	elif model_name == "dplp":
+		A, model = dplp_algo(model_name, trees, samples, vocab, tag_to_ind_map)
+	else:
 		model = linear_model(trees, samples, vocab, tag_to_ind_map, model_name)
-	
 	return model
 
 hidden_size = 128

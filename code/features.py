@@ -12,7 +12,7 @@ import numpy as np
 import random
 
 def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, bag_of_words=False, \
-	word_encoding='embedd'):
+	word_encoding='embedd', bag_of_words_only=False):
 	x_vecs = []
 	y_labels = []
 
@@ -29,7 +29,7 @@ def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, bag_of_
 	return [x_vecs, y_labels]
 
 def add_features_per_sample(sample, vocab, tag_to_ind_map, bag_of_words=False, \
-	word_encoding='embedd', use_def=False):
+	word_encoding='embedd', use_def=False, bag_of_words_only=False):
 	features = {}
 	feat_names = []
 	split_edus = []
@@ -52,21 +52,22 @@ def add_features_per_sample(sample, vocab, tag_to_ind_map, bag_of_words=False, \
 	feat_names.append(['SEC-TAG-STACK1', 'SEC-TAG-STACK2', 'SEC-TAG-QUEUE1'])
 	feat_names.append(['THIR-TAG-STACK1', 'THIR-TAG-STACK2', 'THIR-TAG-QUEUE1'])
 
-	for i in range(0,3):
-		add_word_features(features, split_edus, feat_names[i], i)
+	if not bag_of_words_only:
+		for i in range(0,3):
+			add_word_features(features, split_edus, feat_names[i], i)
 
-	for i in range(0,3):
-		add_tag_features(features, tags_edus, feat_names[i + 3], i, tag_to_ind_map)
+		for i in range(0,3):
+			add_tag_features(features, tags_edus, feat_names[i + 3], i, tag_to_ind_map)
 
-	feat_names = ['END-WORD-STACK1', 'END-WORD-STACK2', 'END-WORD-QUEUE1']
-	add_word_features(features, split_edus, feat_names, -1)
+		feat_names = ['END-WORD-STACK1', 'END-WORD-STACK2', 'END-WORD-QUEUE1']
+		add_word_features(features, split_edus, feat_names, -1)
 
-	feat_names = ['END-TAG-STACK1', 'END-TAG-STACK2', 'END-TAG-QUEUE1']
-	add_tag_features(features, tags_edus, feat_names, -1, tag_to_ind_map)
+		feat_names = ['END-TAG-STACK1', 'END-TAG-STACK2', 'END-TAG-QUEUE1']
+		add_tag_features(features, tags_edus, feat_names, -1, tag_to_ind_map)
 
 	add_edu_features(features, tree, sample._state, split_edus, vocab, bag_of_words, use_def)
-
-	vecs = gen_vectorized_features(features, vocab, tag_to_ind_map, word_encoding, use_def)
+	vecs = gen_vectorized_features(features, vocab, tag_to_ind_map, word_encoding, \
+		use_def, bag_of_words_only)
 	return features, vecs
 
 def add_word_features(features, split_edus, feat_names, word_loc):
@@ -129,10 +130,13 @@ def add_edu_features(features, tree, edus_ind, split_edus, vocab, bag_of_words=F
 			feat = feat_names[i]
 			features[feat] = gen_bag_of_words(tree, vocab, edus_ind[i], use_def)
 
-def gen_vectorized_features(features, vocab, tag_to_ind_map, word_encoding, use_def):
+def gen_vectorized_features(features, vocab, tag_to_ind_map, word_encoding, \
+	use_def, bag_of_words_only):
 	vecs = []
 	n_tags = len(tag_to_ind_map) - 1
 	for key, val in features.items():
+		if bag_of_words_only and 'EDU' not in key:
+			continue
 		# print("key {} val {}".format(key, val))
 		if 'WORD' in key:
 			vecs += gen_word_vectorized_feat(vocab, val, word_encoding, use_def)
