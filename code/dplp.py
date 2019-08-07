@@ -55,9 +55,19 @@ def dplp_algo(model_name, trees, samples, vocab, tag_to_ind_map, subset_size=500
 	[x_vecs, y_labels] = extract_features(trees, samples, vocab, len(samples), tag_to_ind_map, \
 		True, None, True)
 	print("after extract_features")
+	print(A_t.shape)
 	v = np.array(x_vecs).T
-	Av = np.matmul(A_t, v)
-	clf.fit(Av, y_labels)
+	print("after transpose")
+	print(v.shape)
+	Av = np.zeros((A_t.shape[0], v.shape[1]))
+	print("after zeros")
+	for i in range(A_t.shape[0]):
+		print(i)
+		for j in range(v.shape[1]):
+			Av[i,j] = np.matmul(A_t[i, :], v[:, j])
+	# Av = np.matmul(A_t, v)
+	print("bef fit")
+	clf.fit(Av.T, y_labels)
 
 	return A_t, clf
 
