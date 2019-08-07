@@ -22,7 +22,7 @@ def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, bag_of_
 	for i in range(subset_size):
 		sample_ind = rand_samples[i]
 		_, vec_feats = add_features_per_sample(samples[sample_ind], vocab, tag_to_ind_map, \
-			bag_of_words, word_encoding)
+			bag_of_words, word_encoding, False, bag_of_words_only)
 		x_vecs.append(vec_feats)
 		y_labels.append(action_to_ind_map[samples[sample_ind]._action])
 

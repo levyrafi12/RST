@@ -19,7 +19,7 @@ def dplp_algo(model_name, trees, samples, vocab, tag_to_ind_map, subset_size=500
 	subset_size = min(subset_size, len(samples))
 
 	[x_vecs, _] = extract_features(trees, samples, vocab, 1, tag_to_ind_map, \
-		None, True, True)
+		True, None, True)
 
 	n_features = len(x_vecs[0])
 	
@@ -29,7 +29,7 @@ def dplp_algo(model_name, trees, samples, vocab, tag_to_ind_map, subset_size=500
 	print("Running dplp model")
 	A_t_1 =  np.random.uniform(0,1, (K, len(x_vecs[0])))
 
-	T = 10 
+	T = 1
 	eps = 0.1 
 	# clf = svm.SVC(C=C, kernel='linear')
 	clf = MulticlassSVM(C=0.1, tol=0.01, max_iter=100, random_state=0, verbose=0)
@@ -38,7 +38,7 @@ def dplp_algo(model_name, trees, samples, vocab, tag_to_ind_map, subset_size=500
 	for t in range(1, T + 1):
 		print("t {}".format(t))
 		[x_vecs, y_labels] = extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, \
-			None, True, True)
+			True, None, True)
 		v = np.array(x_vecs).T
 		Av = np.matmul(A_t_1, v)
 		clf.fit(Av.T, y_labels)
@@ -51,8 +51,10 @@ def dplp_algo(model_name, trees, samples, vocab, tag_to_ind_map, subset_size=500
 				break
 		A_t_1 = A_t
 
+	print("end loop")
 	[x_vecs, y_labels] = extract_features(trees, samples, vocab, len(samples), tag_to_ind_map, \
-		None, True, True)
+		True, None, True)
+	print("after extract_features")
 	v = np.array(x_vecs).T
 	Av = np.matmul(A_t, v)
 	clf.fit(Av, y_labels)
