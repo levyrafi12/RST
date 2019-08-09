@@ -84,12 +84,12 @@ def gen_train_data_tree(node, stack, queue, samples):
 	samples.append(sample)
 
 def gen_action(parent, child):
-	action = "REDUCE-"
+	action = "REDUCE_"
 	nuc = "NN"
 	if child._nuclearity == "Satellite":
 		nuc = "SN" if parent._childs[0] == child else "NS"
 	action += nuc
-	action += "-"
+	action += "_"
 	action += map_to_cluster(child._relation)
 	return action
 		

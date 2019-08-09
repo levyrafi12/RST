@@ -20,7 +20,7 @@ def train_model(model_name, trees, samples, vocab, tag_to_ind_map):
 	if model_name == "neural":
 		model = neural_network_model(trees, samples, vocab, tag_to_ind_map)
 	elif model_name == "dplp":
-		A, model = dplp_algo(model_name, trees, samples, vocab, tag_to_ind_map)
+		model = dplp_algo(model_name, trees, samples, vocab, tag_to_ind_map)
 	else:
 		model = linear_model(trees, samples, vocab, tag_to_ind_map, model_name)
 	return model
@@ -102,7 +102,7 @@ def linear_model(trees, samples, vocab, tag_to_ind_map, \
 	model_name, n_epoch=10, subset_size=64, print_every=1):
 
 	[x_vecs, _] = extract_features(trees, samples, vocab, 1, tag_to_ind_map, \
-		is_bag_of_words(model_name), get_word_encoding(model_name))
+		is_bag_of_words(model_name), True, get_word_encoding(model_name))
 
 	y_all = list(range(len(ind_to_action_map)))
 	subset_size = min(subset_size, len(samples))
@@ -125,7 +125,7 @@ def linear_model(trees, samples, vocab, tag_to_ind_map, \
 		for i in range(n_subsets):
 			[x_vecs, y_labels] = extract_features(trees, samples, vocab, \
 				subset_size, tag_to_ind_map, is_bag_of_words(model_name),\
-				get_word_encoding(model_name))
+				True, get_word_encoding(model_name))
 
 			clf.partial_fit(x_vecs, y_labels, y_all)
 			y_pred = clf.predict(x_vecs)

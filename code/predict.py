@@ -8,6 +8,9 @@ from torch.autograd import Variable
 
 from features import extract_features
 from relations_inventory import ind_to_action_map
+from relations_inventory import baseline_action
+
+from multiclass_svm import MulticlassSVM
 
 import sklearn
 import math
@@ -15,8 +18,10 @@ import math
 def predict(model, model_name, x_vecs):
 	if model_name == 'neural':
 		return neural_net_predict(model, x_vecs) 
+	if model_name == 'dplp':
+		return dplp_predict(model, x_vecs)
 	return linear_predict(model, x_vecs)
-
+	
 def neural_net_predict(net, x_vecs):
 	scores = net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
 	scores = log_softmax(scores)
@@ -34,3 +39,16 @@ def linear_predict(clf, x_vecs):
 	indices = clf.classes_[np.argsort(scores)][::-1]
 	sorted_actions = [ind_to_action_map[indices[i]] for i in range(len(indices))]
 	return scores, sorted_scores, sorted_actions
+
+def dplp_predict(model, x_vecs):
+	A, clf = model
+	v = np.array([x_vecs]).T
+	Av = np.matmul(A, v)
+	[predict] = clf.predict(Av.T)
+	actions = [ind_to_action_map[predict]]
+	scores = [0] * len(ind_to_action_map)
+	# Correcting illegal action 
+	if actions[0] == 'SHIFT':
+		actions.append(baseline_action)
+
+	return scores, scores, actions

@@ -11,8 +11,8 @@ import numpy as np
 
 import random
 
-def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, bag_of_words=False, \
-	word_encoding='embedd', bag_of_words_only=False):
+def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, \
+	bag_of_words=False, basic_feat=True, word_encoding='embedd'):
 	x_vecs = []
 	y_labels = []
 
@@ -22,14 +22,14 @@ def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, bag_of_
 	for i in range(subset_size):
 		sample_ind = rand_samples[i]
 		_, vec_feats = add_features_per_sample(samples[sample_ind], vocab, tag_to_ind_map, \
-			bag_of_words, word_encoding, False, bag_of_words_only)
+			False, bag_of_words, basic_feat, word_encoding)
 		x_vecs.append(vec_feats)
 		y_labels.append(action_to_ind_map[samples[sample_ind]._action])
 
 	return [x_vecs, y_labels]
 
-def add_features_per_sample(sample, vocab, tag_to_ind_map, bag_of_words=False, \
-	word_encoding='embedd', use_def=False, bag_of_words_only=False):
+def add_features_per_sample(sample, vocab, tag_to_ind_map, use_def=False, \
+	bag_of_words=False, basic_feat=True, word_encoding='embedd'):
 	features = {}
 	feat_names = []
 	split_edus = []
@@ -52,7 +52,7 @@ def add_features_per_sample(sample, vocab, tag_to_ind_map, bag_of_words=False, \
 	feat_names.append(['SEC-TAG-STACK1', 'SEC-TAG-STACK2', 'SEC-TAG-QUEUE1'])
 	feat_names.append(['THIR-TAG-STACK1', 'THIR-TAG-STACK2', 'THIR-TAG-QUEUE1'])
 
-	if not bag_of_words_only:
+	if basic_feat:
 		for i in range(0,3):
 			add_word_features(features, split_edus, feat_names[i], i)
 
@@ -65,9 +65,10 @@ def add_features_per_sample(sample, vocab, tag_to_ind_map, bag_of_words=False, \
 		feat_names = ['END-TAG-STACK1', 'END-TAG-STACK2', 'END-TAG-QUEUE1']
 		add_tag_features(features, tags_edus, feat_names, -1, tag_to_ind_map)
 
-	add_edu_features(features, tree, sample._state, split_edus, vocab, bag_of_words, use_def)
-	vecs = gen_vectorized_features(features, vocab, tag_to_ind_map, word_encoding, \
-		use_def, bag_of_words_only)
+	add_edu_features(features, tree, sample._state, split_edus, vocab, \
+		use_def, bag_of_words)
+	vecs = gen_vectorized_features(features, vocab, tag_to_ind_map, \
+		use_def, basic_feat, word_encoding)
 	return features, vecs
 
 def add_word_features(features, split_edus, feat_names, word_loc):
@@ -89,7 +90,8 @@ def add_tag_features(features, tags_edus, feat_names, tag_loc, tag_to_ind_map):
 			if tag_loc < 0 or len(tags) > tag_loc:
 				features[feat] = tags[tag_loc]
 
-def add_edu_features(features, tree, edus_ind, split_edus, vocab, bag_of_words=False, use_def=False):
+def add_edu_features(features, tree, edus_ind, split_edus, vocab, use_def, \
+	bag_of_words):
 	feat_names = ['LEN-STACK1', 'LEN-STACK2', 'LEN-QUEUE1']
 
 	num_edus = tree._root._span[1] - tree._root._span[0] + 1
@@ -130,16 +132,16 @@ def add_edu_features(features, tree, edus_ind, split_edus, vocab, bag_of_words=F
 			feat = feat_names[i]
 			features[feat] = gen_bag_of_words(tree, vocab, edus_ind[i], use_def)
 
-def gen_vectorized_features(features, vocab, tag_to_ind_map, word_encoding, \
-	use_def, bag_of_words_only):
+def gen_vectorized_features(features, vocab, tag_to_ind_map, use_def, basic_feat, \
+	word_encoding):
 	vecs = []
 	n_tags = len(tag_to_ind_map) - 1
 	for key, val in features.items():
-		if bag_of_words_only and 'EDU' not in key:
+		if not basic_feat and 'EDU' not in key:
 			continue
 		# print("key {} val {}".format(key, val))
 		if 'WORD' in key:
-			vecs += gen_word_vectorized_feat(vocab, val, word_encoding, use_def)
+			vecs += gen_word_vectorized_feat(vocab, val, use_def, word_encoding)
 		elif 'TAG' in key:
 			vecs += [normalized(get_tag_ind(tag_to_ind_map, val, use_def), n_tags)]
 		elif 'EDU' in key:
@@ -152,11 +154,11 @@ def gen_vectorized_features(features, vocab, tag_to_ind_map, word_encoding, \
 def normalized(val, max_val):
 	return val / max_val
 
-def gen_word_vectorized_feat(vocab, val, word_encoding, use_def):
+def gen_word_vectorized_feat(vocab, val, use_def, word_encoding):
 	word_ind = vocab_get(vocab, val, use_def)
 	if word_encoding == 'embedd':
 		vec = [elem for elem in vocab._wordVectors[word_ind]]
-	elif word_encoding:
+	else:
 		vec = gen_one_hot_vector(vocab, word_ind)
 	return vec
 
@@ -166,4 +168,7 @@ def get_word_encoding(model_name):
 	return 'one_hot'
 
 def is_bag_of_words(model_name):
-	return model_name == 'dplp_A_I'
+	return model_name == 'dplp_A_I' or model_name == 'dplp'
+
+def is_basic_feat(model_name):
+	return model_name != 'dplp'

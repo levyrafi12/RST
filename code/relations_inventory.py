@@ -1,5 +1,6 @@
 action_to_ind_map = {}
 ind_to_action_map = []
+baseline_action = 'REDUCE_NS_ELABORATION'
 
 relations_list = ['analogy', 'Analogy', 'antithesis', 'Contrast', 'attribution', 
 		'attribution-n', 'background', 'cause', 'Cause-Result', 'circumstance',
@@ -78,11 +79,17 @@ cluster_multi_nuc_rels_list = ['CAUSE', 'COMPARISON', 'CONDITION', 'CONTRAST',
  
 def build_reduce_action(rel, nuc):
 	key = 'REDUCE'
-	key += "-"
+	key += "_"
 	key += nuc
-	key += "-"
+	key += "_"
 	key += rel	
 	return key
+
+def split_action(action):
+	if action == 'SHIFT':
+		return _, _ , action
+	elems = action.split('_')
+	return 'REDUCE', elems[1], elems[2]
 
 def build_parser_action_to_ind_mapping():
 	ind = 0

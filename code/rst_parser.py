@@ -18,6 +18,7 @@ from train_data import gen_state
 from predict import predict
 from features import get_word_encoding
 from features import is_bag_of_words
+from features import is_basic_feat
 from relations_inventory import ind_to_action_map
 from relations_inventory import action_to_ind_map
 from preprocess import create_dir
@@ -27,7 +28,8 @@ from defs import *
 import copy
 from collections import deque
 from collections import defaultdict
-import math
+from relations_inventory import baseline_action
+from relations_inventory import split_action
 
 class Stack(object):
 	def __init__(self):
@@ -223,7 +225,8 @@ def next_move(parsers_queue, parser, model_name, model, tree, vocab, tag_to_ind_
 	# sample.print_info()
 
 	_, x_vecs = add_features_per_sample(sample, vocab, tag_to_ind_map, \
-		is_bag_of_words(model_name), get_word_encoding(model_name), True)
+		True, is_bag_of_words(model_name), is_basic_feat(model_name), \
+		get_word_encoding(model_name))
 
 	# print("next move")
 	scores, sorted_scores, sorted_actions = predict(model, model_name, x_vecs)
@@ -285,10 +288,7 @@ def gen_transition(action):
 	else:
 		transition._action = "reduce"
 		
-		split_action = action.split("-")
-		nuc = split_action[1]
-		rel = split_action[2]
-
+		_, nuc, rel = action.split("_")
 		if nuc == "NS":
 			transition._nuclearity.append("Nucleus")
 			transition._nuclearity.append("Satellite")
@@ -357,9 +357,12 @@ def most_freq_baseline(parser):
 	if transition._action == "shift":
 		return transition
 
-	transition._relation = 'ELABORATION'
-	transition._nuclearity.append("Nucleus")
-	transition._nuclearity.append("Satellite")
+	_, nuc, rel = split_action(baseline_action)
+	dict = {'N' : 'Nucleus', 'S' : 'Satellite'}
+
+	transition._relation = rel
+	transition._nuclearity.append(dict[nuc[0]])
+	transition._nuclearity.append(dict[nuc[1]])
 
 	return transition
 
