@@ -13,6 +13,9 @@ import random
 
 def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, \
 	bag_of_words=False, basic_feat=True, word_encoding='embedd'):
+	"""
+		Return a subset of samples selected in a random fasion
+	"""
 	x_vecs = []
 	y_labels = []
 
@@ -21,12 +24,39 @@ def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, \
 
 	for i in range(subset_size):
 		sample_ind = rand_samples[i]
-		_, vec_feats = add_features_per_sample(samples[sample_ind], vocab, tag_to_ind_map, \
-			False, bag_of_words, basic_feat, word_encoding)
-		x_vecs.append(vec_feats)
-		y_labels.append(action_to_ind_map[samples[sample_ind]._action])
+		extend_features_vec(samples, sample_ind, vocab, tag_to_ind_map, \
+			x_vecs, y_labels, bag_of_words, basic_feat, word_encoding)
 
 	return [x_vecs, y_labels]
+
+
+def extract_features_next_subset(trees, samples, vocab, subset_size, tag_to_ind_map, \
+	bag_of_words=False, basic_feat=True, word_encoding='embedd'):
+	"""
+		Return the next subset
+	"""
+	n_samples = len(samples)
+	x_vecs = []
+	y_labels = []
+
+	rand_samples = np.arange(len(samples))
+	np.random.shuffle(rand_samples)
+
+	for i in range(1, n_samples + 1):
+		sample_ind = rand_samples[i - 1]
+		extend_features_vec(samples, sample_ind, vocab, tag_to_ind_map, \
+			x_vecs, y_labels, bag_of_words, basic_feat, word_encoding)
+		if i % subset_size == 0 or i == n_samples:
+			yield [x_vecs, y_labels]
+			x_vecs = []
+			y_labels = []
+
+def extend_features_vec(samples, sample_ind, vocab, tag_to_ind_map, x_vecs, y_labels, \
+	bag_of_words, basic_feat, word_encoding):
+	_, vec_feats = add_features_per_sample(samples[sample_ind], vocab, tag_to_ind_map, \
+		False, bag_of_words, basic_feat, word_encoding)
+	x_vecs.append(vec_feats)
+	y_labels.append(action_to_ind_map[samples[sample_ind]._action])
 
 def add_features_per_sample(sample, vocab, tag_to_ind_map, use_def=False, \
 	bag_of_words=False, basic_feat=True, word_encoding='embedd'):

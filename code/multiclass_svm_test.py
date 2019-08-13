@@ -6,7 +6,7 @@ import numpy as np
 from multiclass_svm import MulticlassSVM
 
 X = np.array([[0,0,0,1], [1,0,0,0], [0,1,0,0], [0,0,1,0],[0,0,1,1]])
-y = np.array([6, 0, 1, 2,2])
+y = np.array([0, 0, 1, 1,1])
 
 test_x = np.array([[0,0,0,1]])
 

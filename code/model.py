@@ -7,6 +7,7 @@ import torch.optim as optim
 from torch.autograd import Variable
 
 from features import extract_features
+from features import extract_features_next_subset
 from features import get_word_encoding
 from features import is_bag_of_words
 from relations_inventory import ind_to_action_map
@@ -67,16 +68,12 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 	print(optimizer)
 
 	n_match = 0
-	n_subsets = math.ceil(len(samples) / subset_size)
-	n_samples_in_epoch = subset_size * n_subsets
 
 	# grad_updates = n_epoch * (n_samples / subset_size)
 
 	for epoch in range(1, n_epoch + 1):
-		for i in range(n_subsets):
-			[x_vecs, y_labels] = extract_features(trees, samples, vocab, \
-				subset_size, tag_to_ind_map)
-
+		for [x_vecs, y_labels] in extract_features_next_subset(\
+			trees, samples, vocab, subset_size, tag_to_ind_map):
 			optimizer.zero_grad() # zero the gradient buffers
 			# A two dimension array of size num samples * num of actions
 			scores = net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
@@ -89,7 +86,7 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 			n_match += np.sum([indices[j] == y_labels[j] for j in range(len(indices))])
 		if epoch % print_every == 0:
 			print("epoch {0} num matches = {1:.3f}% loss {2:.3f}".\
-				format(epoch, n_match / n_samples_in_epoch * 100, loss.item()))
+				format(epoch, n_match / len(samples) * 100, loss.item()))
 			n_match = 0
 		evaluate("neural", net, vocab, tag_to_ind_map)
 
