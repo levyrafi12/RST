@@ -11,9 +11,10 @@ from relations_inventory import ind_to_action_map
 from multiclass_svm import MulticlassSVM
 
 def dplp_algo(model_name, trees, samples, vocab, tag_to_ind_map, subset_size=500):
-	C = 0.1
-	tau = 1.0
-	K = 30
+	C = 1.0 # {1, 10, 50, 100}
+	# as tau becomes smaller the effect of A_prev is larger. No effect when tau = 1
+	tau = 1.0 # tau = { 1, 0.1, 0.01, 0.001} 
+	K = 30 # { 30, 60, 90, 150}
 
 	subset_size = min(subset_size, len(samples))
 
@@ -29,7 +30,7 @@ def dplp_algo(model_name, trees, samples, vocab, tag_to_ind_map, subset_size=500
 	A_t_1 =  np.random.uniform(0, 1, (K, len(x_vecs[0])))
 
 	T = 500
-	eps = 0.01 
+	eps = 0.001 
 	# clf = svm.SVC(C=C, kernel='linear')
 	clf = MulticlassSVM(C=C, tol=0.01, max_iter=100, random_state=0, verbose=0)
 
@@ -76,11 +77,15 @@ def solve_proj_mat_iter(clf, A_prev, t, tau, x_vecs, y_labels):
 	A = np.zeros(A_prev.shape)
 
 	for i in range(n_vec):
-		expected_weight = sum([alpha[m, i] * w[m, :] for m in range(n_classes)])
 		[y_i] = le.transform([y_labels[i]])
+		expected_weight = sum([(delta_f(m, y_i) - alpha[m, i]) * w[m, :] for m in range(n_classes)])
 		A += np.outer(w[y_i, :] - expected_weight, x_vecs[i])
 
 	A *= (1 / t)
 	A += (1 - tau / t) * A_prev
 	return A
 
+def delta_f(m, y_i):
+	if y_i == m:
+		return 1
+	return 0
