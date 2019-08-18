@@ -155,16 +155,16 @@ class ParsersQueue(object):
 	def push_back(self, parser):
 		self._parsers.appendleft(parser)
 
-def evaluate(model_name, model, vocab, tag_to_ind_map, baseline=False, k_top=1):
+def evaluate(model, vocab, tag_to_ind_map, baseline=False, k_top=1):
 	dev_trees = preprocess(WORK_DIR, DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
-	parse_files(model_name, model, dev_trees, vocab, tag_to_ind_map, baseline, k_top)
+	parse_files(model, dev_trees, vocab, tag_to_ind_map, baseline, k_top)
 
-def parse_files(model_name, model, trees, vocab, tag_to_ind_map, baseline, k_top):
+def parse_files(model, trees, vocab, tag_to_ind_map, baseline, k_top):
 	path_to_out = create_dir(WORK_DIR, PRED_OUTDIR)
 
 	for tree in trees: 
 		fn = build_infile_name(tree._fname, WORK_DIR, DEV_TEST_DIR, ["out.edus", "edus"])
-		root = parse_file(fn, model_name, model, tree, vocab, \
+		root = parse_file(fn, model, tree, vocab, \
 			tag_to_ind_map, baseline, k_top)
 		predfn = path_to_out
 		predfn += SEP
@@ -174,7 +174,7 @@ def parse_files(model_name, model, trees, vocab, tag_to_ind_map, baseline, k_top
 
 	eval(DEV_TEST_GOLD_DIR, "pred")
 
-def parse_file(fn, model_name, model, tree, vocab, \
+def parse_file(fn, model, tree, vocab, \
 	tag_to_ind_map, baseline, k_top):
 	parsers_queue = ParsersQueue(fn, k_top)
 	# N shift operations + N - 1 reduce relations
@@ -190,7 +190,7 @@ def parse_file(fn, model_name, model, tree, vocab, \
 			continue
 
 		parser = parsers_queue.pop_front()
-		next_move(parsers_queue, parser, model_name, model, tree, vocab, \
+		next_move(parsers_queue, parser, model, tree, vocab, \
 			tag_to_ind_map, baseline, wrong_decisions)
 
 	# make sure parsing indeed ended corretly
@@ -208,7 +208,7 @@ def parse_file(fn, model_name, model, tree, vocab, \
 	# parsers are sorted in descending order
 	return parsers_queue.back()._root
 
-def next_move(parsers_queue, parser, model_name, model, tree, vocab, tag_to_ind_map, \
+def next_move(parsers_queue, parser, model, tree, vocab, tag_to_ind_map, \
 	baseline, wrong_decisions):
 	if parser.ended() or parsers_queue._k_top == 1:
 		parsers_queue.push_back(parser)
@@ -225,11 +225,11 @@ def next_move(parsers_queue, parser, model_name, model, tree, vocab, tag_to_ind_
 	# sample.print_info()
 
 	_, x_vecs = add_features_per_sample(sample, vocab, tag_to_ind_map, \
-		True, is_bag_of_words(model_name), is_basic_feat(model_name), \
-		get_word_encoding(model_name))
+		True, is_bag_of_words(model._name), is_basic_feat(model._name), \
+		get_word_encoding(model._name))
 
 	# print("next move")
-	scores, sorted_scores, sorted_actions = predict(model, model_name, x_vecs)
+	scores, sorted_scores, sorted_actions = predict(model, x_vecs)
 
 	i = 0
 	done = False

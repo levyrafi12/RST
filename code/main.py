@@ -32,7 +32,7 @@ def parse_args(argv):
 				assert (i + 1) < len(argv), "Model name is missing. Correct cmd: " + cmd 
 				model_name = argv[i + 1]
 				assert model_name in ['dplp_A_0', 'dplp_A_I', 'neural', 'dplp'], \
-					"Bad model name: " + argv[i + 1] + " Use neural|dplpdplp_A_0|dplp_A_I|dplp"
+					"Bad model name: " + argv[i + 1] + " Use neural|dplp_A_0|dplp_A_I|dplp"
 				i += 1
 			elif argv[i] == "-baseline":
 				baseline = True
@@ -67,4 +67,4 @@ if __name__ == '__main__':
 		model = train_model(model_name, trees, samples, vocab, tag_to_ind_map)
 
 	print("evaluate..")
-	evaluate(model_name, model, vocab, tag_to_ind_map, baseline, k_top)
+	evaluate(model, vocab, tag_to_ind_map, baseline, k_top)

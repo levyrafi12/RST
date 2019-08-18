@@ -192,6 +192,20 @@ def gen_word_vectorized_feat(vocab, val, use_def, word_encoding):
 		vec = gen_one_hot_vector(vocab, word_ind)
 	return vec
 
+def project_features(A, x_vecs):
+	"""
+		Projectiong each x_vec in x_vecs from v-dim space to k dim space  
+		A matrix dim is k * v
+	"""
+	v = np.array(x_vecs).T # v * n
+	Av = np.zeros((A.shape[0], v.shape[1]))
+
+	for i in range(A.shape[0]):
+		for j in range(v.shape[1]):
+			Av[i,j] = np.matmul(A[i, :], v[:, j])
+
+	return Av.T # n * v
+
 def get_word_encoding(model_name):
 	if model_name == 'neural':
 		return 'embedd'
@@ -201,4 +215,4 @@ def is_bag_of_words(model_name):
 	return model_name == 'dplp_A_I' or model_name == 'dplp'
 
 def is_basic_feat(model_name):
-	return model_name != 'dplp'
+	return True or model_name != 'dplp'
