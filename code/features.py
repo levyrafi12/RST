@@ -215,4 +215,4 @@ def is_bag_of_words(model_name):
 	return model_name == 'dplp_A_I' or model_name == 'dplp'
 
 def is_basic_feat(model_name):
-	return True or model_name != 'dplp'
+	return model_name != 'dplp'
