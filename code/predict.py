@@ -21,7 +21,7 @@ import math
 def predict(model, x_vecs):
 	if model._name == 'neural':
 		return neural_net_predict(model, x_vecs) 
-	if False and model._name == 'dplp':
+	if model._name == 'dplp':
 		return dplp_predict(model, x_vecs)
 	return linear_predict(model, x_vecs)
 	

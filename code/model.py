@@ -100,7 +100,7 @@ def neural_network_model(model, trees, samples, vocab, tag_to_ind_map, \
 
 def dplp_model(model, trees, samples, vocab, tag_to_ind_map):
 	dplp_algo(model, trees, samples, vocab, tag_to_ind_map)
-	linear_model(model, trees, samples, vocab, tag_to_ind_map)
+	# linear_model(model, trees, samples, vocab, tag_to_ind_map)
 
 def linear_model(model, trees, samples, vocab, tag_to_ind_map, \
 	n_epoch=10, subset_size=64, print_every=1):
