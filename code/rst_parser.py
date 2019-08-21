@@ -21,9 +21,7 @@ from features import is_bag_of_words
 from features import is_basic_feat
 from relations_inventory import ind_to_action_map
 from relations_inventory import action_to_ind_map
-from preprocess import create_dir
-from preprocess import build_infile_name
-from preprocess import SEP
+from general import *
 from defs import *
 import copy
 from collections import deque
@@ -155,8 +153,8 @@ class ParsersQueue(object):
 	def push_back(self, parser):
 		self._parsers.appendleft(parser)
 
-def evaluate(model_name, model, vocab, tag_to_ind_map, baseline=False, k_top=1):
-	dev_trees = preprocess(WORK_DIR, DEV_TEST_DIR, DEV_TEST_GOLD_DIR)
+def evaluate(model_name, model, vocab, tag_to_ind_map, gen_dep, baseline=False, k_top=1):
+	dev_trees = preprocess(WORK_DIR, DEV_TEST_DIR, gen_dep, DEV_TEST_GOLD_DIR)
 	parse_files(model_name, model, dev_trees, vocab, tag_to_ind_map, baseline, k_top)
 
 def parse_files(model_name, model, trees, vocab, tag_to_ind_map, baseline, k_top):

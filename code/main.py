@@ -12,6 +12,8 @@ from vocabulary import gen_vocabulary
 from preprocess import print_trees_stats
 from defs import *
 
+import datetime
+
 import sys
 
 def parse_args(argv):
@@ -19,11 +21,12 @@ def parse_args(argv):
 	baseline = False
 	print_stats = False
 	k_top = 1
+	gen_dep = False
 
 	if len(argv) < 2:
-		return [model_name, baseline, print_stats, k_top]
+		return [model_name, baseline, print_stats, k_top, gen_dep]
 
-	cmd = "-m <dplp_A_0|dplp_A_I||neural> -baseline -stats -k_top"
+	cmd = "-m <dplp|dplp_A_0|dplp_A_I||neural> -baseline -stats -k_top -gen_dep"
 
 	if len(argv) >= 2:
 		i = 1
@@ -32,7 +35,7 @@ def parse_args(argv):
 				assert (i + 1) < len(argv), "Model name is missing. Correct cmd: " + cmd 
 				model_name = argv[i + 1]
 				assert model_name in ['dplp_A_0', 'dplp_A_I', 'neural', 'dplp'], \
-					"Bad model name: " + argv[i + 1] + " Use neural|dplpdplp_A_0|dplp_A_I|dplp"
+					"Bad model name: " + argv[i + 1] + " Use neural|dplp_A_0|dplp_A_I|dplp"
 				i += 1
 			elif argv[i] == "-baseline":
 				baseline = True
@@ -41,6 +44,8 @@ def parse_args(argv):
 			elif argv[i] == "-k_top":
 				k_top = int(argv[i + 1])
 				i += 1
+			elif argv[i] == "-gen_dep":
+				gen_dep = True
 			else:
 				assert False, "bad command line. Correct cmd: " + cmd
 			i += 1
@@ -48,13 +53,13 @@ def parse_args(argv):
 	if baseline and k_top > 1:
 		assert False, "-k_top must be 1 when running with -baseline"
 
-	return [model_name, baseline, print_stats, k_top]
+	return [model_name, baseline, print_stats, k_top, gen_dep]
 	
 if __name__ == '__main__':
-	[model_name, baseline, print_stats, k_top] = parse_args(sys.argv)
+	[model_name, baseline, print_stats, k_top, gen_dep] = parse_args(sys.argv)
 
-	print("preprocessing")
-	trees = preprocess(WORK_DIR, TRAINING_DIR)
+	print("preprocessing [{}]".format(datetime.datetime.now()))
+	trees = preprocess(WORK_DIR, TRAINING_DIR, gen_dep)
 	if print_stats:
 		print_trees_stats(trees)
 
@@ -62,9 +67,9 @@ if __name__ == '__main__':
 
 	model = '' # model data structure
 	if not baseline:
-		print("training...")
+		print("training [{}]".format(datetime.datetime.now()))
 		[samples, y_all] = gen_train_data(trees, WORK_DIR)
-		model = train_model(model_name, trees, samples, vocab, tag_to_ind_map)
+		model = train_model(model_name, trees, samples, vocab, tag_to_ind_map, gen_dep)
 
-	print("evaluate..")
-	evaluate(model_name, model, vocab, tag_to_ind_map, baseline, k_top)
+	print("evaluate [{}]".format(datetime.datetime.now()))
+	evaluate(model_name, model, vocab, tag_to_ind_map, gen_dep, baseline, k_top)

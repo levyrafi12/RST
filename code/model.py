@@ -17,13 +17,13 @@ from dplp import dplp_algo
 import sklearn
 import math
 
-def train_model(model_name, trees, samples, vocab, tag_to_ind_map):
+def train_model(model_name, trees, samples, vocab, tag_to_ind_map, gen_dep):
 	if model_name == "neural":
-		model = neural_network_model(trees, samples, vocab, tag_to_ind_map)
+		model = neural_network_model(trees, samples, vocab, tag_to_ind_map, gen_dep)
 	elif model_name == "dplp":
 		model = dplp_algo(model_name, trees, samples, vocab, tag_to_ind_map)
 	else:
-		model = linear_model(trees, samples, vocab, tag_to_ind_map, model_name)
+		model = linear_model(trees, samples, vocab, tag_to_ind_map, model_name, gen_dep)
 	return model
 
 hidden_size = 128
@@ -49,7 +49,7 @@ class Network(nn.Module):
         return F.relu(self.fc2(x))
  
 def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
-	n_epoch=10, subset_size=64, print_every=1):
+	gen_dep, n_epoch=10, subset_size=64, print_every=1):
 
 	num_classes = len(ind_to_action_map)
 	subset_size = min(subset_size, len(samples))
@@ -88,7 +88,8 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 			print("epoch {0} num matches = {1:.3f}% loss {2:.3f}".\
 				format(epoch, n_match / len(samples) * 100, loss.item()))
 			n_match = 0
-		evaluate("neural", net, vocab, tag_to_ind_map)
+		evaluate("neural", net, vocab, tag_to_ind_map, gen_dep)
+		gen_dep = False
 
 	# for param in net.parameters():
 	# print(param.data)
@@ -96,7 +97,7 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 	return net
 
 def linear_model(trees, samples, vocab, tag_to_ind_map, \
-	model_name, n_epoch=10, subset_size=64, print_every=1):
+	model_name, gen_dep, n_epoch=10, subset_size=64, print_every=1):
 
 	[x_vecs, _] = extract_features(trees, samples, vocab, 1, tag_to_ind_map, \
 		is_bag_of_words(model_name), True, get_word_encoding(model_name))
@@ -131,6 +132,7 @@ def linear_model(trees, samples, vocab, tag_to_ind_map, \
 			print("epoch {0} num matches {1:.3f}%".format(\
 				epoch, n_match / n_samples_in_epoch * 100))
 			n_match = 0
-		evaluate(model_name, clf, vocab, tag_to_ind_map)
+		evaluate(model_name, clf, vocab, tag_to_ind_map, gen_dep)
+		gen_dep = False
 
 	return clf
