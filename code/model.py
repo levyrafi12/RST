@@ -103,7 +103,7 @@ def dplp_model(model, trees, samples, vocab, tag_to_ind_map):
 	linear_model(model, trees, samples, vocab, tag_to_ind_map)
 
 def linear_model(model, trees, samples, vocab, tag_to_ind_map, \
-	n_epoch=100, subset_size=64, print_every=1):
+	n_epoch=10, subset_size=64, print_every=1):
 
 	[x_vecs, _] = extract_features(trees, samples, vocab, 1, tag_to_ind_map, \
 		is_bag_of_words(model._name), is_basic_feat(model._name), \

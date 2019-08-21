@@ -21,7 +21,8 @@ import math
 def predict(model, x_vecs):
 	if model._name == 'neural':
 		return neural_net_predict(model, x_vecs) 
-
+	if False and model._name == 'dplp':
+		return dplp_predict(model, x_vecs)
 	return linear_predict(model, x_vecs)
 	
 def neural_net_predict(model, x_vecs):
@@ -47,10 +48,10 @@ def linear_predict(model, x_vecs):
 	return scores, sorted_scores, sorted_actions
 
 def dplp_predict(model, x_vecs):
-	A, clf = model
-	v = np.array([x_vecs]).T
-	Av = np.matmul(A, v)
-	[predict] = clf.predict(Av.T)
+	A = model._proj_mat
+	clf = model._clf
+	x_vecs = project_features(A, [x_vecs])
+	[predict] = clf.predict(x_vecs)
 	actions = [ind_to_action_map[predict]]
 	scores = [0] * len(ind_to_action_map)
 	# Correcting illegal action 

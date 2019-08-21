@@ -4,15 +4,19 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 import numpy as np
 from numpy import linalg as LA
 
+from sklearn import svm
+
 from features import extract_features
 from features import is_basic_feat
 from features import get_word_encoding
 from relations_inventory import ind_to_action_map
+from features import project_features
+from model_defs import Model
 
 # from sklearn import svm
 from multiclass_svm import MulticlassSVM
 
-def dplp_algo(model, trees, samples, vocab, tag_to_ind_map, subset_size=500):
+def dplp_algo(model, trees, samples, vocab, tag_to_ind_map, subset_size=500, print_every=10):
 	C = 1.0 # {1, 10, 50, 100}
 	# as tau becomes smaller the effect of A_prev is larger. No effect when tau = 1
 	tau = 1.0 # tau = { 1, 0.1, 0.01, 0.001} 
@@ -29,34 +33,41 @@ def dplp_algo(model, trees, samples, vocab, tag_to_ind_map, subset_size=500):
 		format(len(vocab._tokens), n_features, len(ind_to_action_map), len(samples), subset_size))
 
 	print("Running dplp model")
-	A_t_1 =  np.random.uniform(0, 1, (K, len(x_vecs[0])))
+	A_t_1 =  np.random.uniform(0, 1, (K, len(x_vecs[0]))) # A(t - 1)
 
-	T = 100
+	T = 200
 	eps = 0.001 
-	# clf = svm.SVC(C=C, kernel='linear')
 	clf = MulticlassSVM(C=C, tol=0.01, max_iter=100, random_state=0, verbose=0)
 
 	for t in range(1, T + 1):
-		if t % 10:
+		if t > 0 and t % print_every == 0:
 			print("t {}".format(t))
 		[x_vecs, y_labels] = extract_features(trees, samples, vocab, subset_size, \
 			tag_to_ind_map, True, is_basic_feat(model._name), \
 			get_word_encoding(model._name))
-		v = np.array(x_vecs).T
-		Av = np.matmul(A_t_1, v)
-		clf.fit(Av.T, y_labels)
+		Av = project_features(A_t_1, x_vecs) # Av dim is subset_size * K
+		clf.fit(Av, y_labels)
 		A_t = solve_proj_mat_iter(clf, A_t_1, t, tau, x_vecs, y_labels)
 		if t == 2:
 			A2_diff = LA.norm(A_t - A_t_1)
 		elif t > 2:
 			A_diff = LA.norm(A_t - A_t_1)
-			if t % 10:
+			if t % print_every == 0:
 				print("Ratio {0:.4f}".format(A_diff / A2_diff))
 			if A_diff / A2_diff < eps:
 				break
 		A_t_1 = A_t
 
+	# [x_vecs, y_labels] = extract_features(trees, samples, vocab, \
+	# subset_size, tag_to_ind_map, True,\
+	# is_basic_feat(model._name), get_word_encoding(model._name))
+	# x_vecs = project_features(A_t, x_vecs)
+
+	# clf.fit(x_vecs, y_labels)
+	clf = svm.SVC(C=C, kernel='linear', decision_function_shape='ovr')
+	clf.fit(x_vecs, y_labels)
 	model._proj_mat = A_t
+	model._clf = clf
 
 def solve_proj_mat_iter(clf, A_prev, t, tau, x_vecs, y_labels):
 	"""

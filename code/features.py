@@ -195,7 +195,7 @@ def gen_word_vectorized_feat(vocab, val, use_def, word_encoding):
 def project_features(A, x_vecs):
 	"""
 		Projectiong each x_vec in x_vecs from v-dim space to k dim space  
-		A matrix dim is k * v
+		A is a matrix of dimension k * v
 	"""
 	v = np.array(x_vecs).T # v * n
 	Av = np.zeros((A.shape[0], v.shape[1]))
