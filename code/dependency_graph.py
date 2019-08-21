@@ -32,7 +32,7 @@ def head_set_from_dependency_parse(base_path, files_dir, trees):
 
         with open(outfn, "w") as ofh:
             for edu_ind in range(1, len(tree._EDUS_table)):
-                ofh.write("{}\n".format(tree._EDU_head_set[edu_ind]))
+                ofh.write("{}\n".format(' '.join(tree._EDU_head_set[edu_ind])))
 
 def create_edus_head_set(parser, tree, edu_in_sent):
     """

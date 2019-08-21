@@ -11,6 +11,9 @@ import numpy as np
 
 import random
 
+import sys
+sys.stdout.flush()
+
 def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, \
 	bag_of_words=False, basic_feat=True, word_encoding='embedd'):
 	"""
@@ -184,7 +187,7 @@ def gen_vectorized_features(features, vocab, tag_to_ind_map, use_def, basic_feat
 	for key, val in features.items():
 		if not basic_feat and 'EDU' not in key:
 			continue
-		# print("key {} val {}".format(key, val))
+		# print("key {} val '{}'".format(key, val))
 		if 'HEAD-SET' in key:
 			# overwrite use_def to True since vocab and dependency graph were 
 			# built by different tokenizer. Thus some head word set may not exist in 
@@ -211,6 +214,20 @@ def gen_word_vectorized_feat(vocab, val, use_def, word_encoding):
 	else:
 		vec = gen_one_hot_vector(vocab, word_ind)
 	return vec
+
+def project_features(A, x_vecs):
+	"""
+		Projectiong each x_vec in x_vecs from v-dim space to k dim space  
+		A is a matrix of dimension k * v
+	"""
+	v = np.array(x_vecs).T # v * n
+	Av = np.zeros((A.shape[0], v.shape[1]))
+
+	for i in range(A.shape[0]):
+		for j in range(v.shape[1]):
+			Av[i,j] = np.matmul(A[i, :], v[:, j])
+
+	return Av.T # n * v
 
 def get_word_encoding(model_name):
 	if model_name == 'neural':

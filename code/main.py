@@ -72,4 +72,5 @@ if __name__ == '__main__':
 		model = train_model(model_name, trees, samples, vocab, tag_to_ind_map, gen_dep)
 
 	print("evaluate [{}]".format(datetime.datetime.now()))
-	evaluate(model_name, model, vocab, tag_to_ind_map, gen_dep, baseline, k_top)
+	evaluate(model, vocab, tag_to_ind_map, gen_dep, baseline, k_top)
+

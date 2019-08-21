@@ -6,24 +6,31 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
+import sys
+sys.stdout.flush()
+
 from features import extract_features
 from features import extract_features_next_subset
 from features import get_word_encoding
 from features import is_bag_of_words
+from features import is_basic_feat
+from features import project_features
 from relations_inventory import ind_to_action_map
 from rst_parser import evaluate
 from dplp import dplp_algo
+from model_defs import Model
 
 import sklearn
 import math
 
 def train_model(model_name, trees, samples, vocab, tag_to_ind_map, gen_dep):
+	model = Model(model_name)
 	if model_name == "neural":
-		model = neural_network_model(trees, samples, vocab, tag_to_ind_map, gen_dep)
+		neural_network_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep)
 	elif model_name == "dplp":
-		model = dplp_algo(model_name, trees, samples, vocab, tag_to_ind_map)
+		dplp_model(model, trees, samples, vocab, tag_to_ind_map)
 	else:
-		model = linear_model(trees, samples, vocab, tag_to_ind_map, model_name, gen_dep)
+		linear_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep)
 	return model
 
 hidden_size = 128
@@ -48,9 +55,8 @@ class Network(nn.Module):
         x = F.relu(self.fc1(x))
         return F.relu(self.fc2(x))
  
-def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
+def neural_network_model(model, trees, samples, vocab, tag_to_ind_map, \
 	gen_dep, n_epoch=10, subset_size=64, print_every=1):
-
 	num_classes = len(ind_to_action_map)
 	subset_size = min(subset_size, len(samples))
 
@@ -61,6 +67,7 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 	print("Running neural model")
 
 	net = Network(len(x_vecs[0]), hidden_size, num_classes)
+	model._clf = net
 	print(net)
 
 	criterion = nn.CrossEntropyLoss()
@@ -88,19 +95,25 @@ def neural_network_model(trees, samples, vocab, tag_to_ind_map, \
 			print("epoch {0} num matches = {1:.3f}% loss {2:.3f}".\
 				format(epoch, n_match / len(samples) * 100, loss.item()))
 			n_match = 0
-		evaluate("neural", net, vocab, tag_to_ind_map, gen_dep)
+		evaluate(model, vocab, tag_to_ind_map, gen_dep)
 		gen_dep = False
 
 	# for param in net.parameters():
 	# print(param.data)
 
-	return net
+def dplp_model(model, trees, samples, vocab, tag_to_ind_map):
+	dplp_algo(model, trees, samples, vocab, tag_to_ind_map)
+	# linear_model(model, trees, samples, vocab, tag_to_ind_map)
 
-def linear_model(trees, samples, vocab, tag_to_ind_map, \
-	model_name, gen_dep, n_epoch=10, subset_size=64, print_every=1):
+def linear_model(model, trees, samples, vocab, tag_to_ind_map, \
+	gen_dep, n_epoch=10, subset_size=64, print_every=1):
 
 	[x_vecs, _] = extract_features(trees, samples, vocab, 1, tag_to_ind_map, \
-		is_bag_of_words(model_name), True, get_word_encoding(model_name))
+		is_bag_of_words(model._name), is_basic_feat(model._name), \
+		get_word_encoding(model._name))
+
+	if model.is_proj_mat():
+		x_vecs = project_features(model._proj_mat, x_vecs)
 
 	y_all = list(range(len(ind_to_action_map)))
 	subset_size = min(subset_size, len(samples))
@@ -108,11 +121,12 @@ def linear_model(trees, samples, vocab, tag_to_ind_map, \
 	print("num features {}, num classes {}, num samples {} subset size {}".\
 		format(len(x_vecs[0]), len(y_all), len(samples), subset_size))
 
-	print("Running {} model 'word encoding' {} 'bag of words' {}".\
-		format(model_name, get_word_encoding(model_name), \
-		is_bag_of_words(model_name)))
+	print("Running {} model 'word encoding' {} 'bag of words' {} 'basic feat' {}".\
+		format(model._name, get_word_encoding(model._name), \
+		is_bag_of_words(model._name), is_basic_feat(model._name)))
 
 	clf = sklearn.linear_model.SGDClassifier()
+	model._clf = clf
 	print(clf)
 
 	n_match = 0
@@ -122,9 +136,12 @@ def linear_model(trees, samples, vocab, tag_to_ind_map, \
 	for epoch in range(1, n_epoch + 1):
 		for i in range(n_subsets):
 			[x_vecs, y_labels] = extract_features(trees, samples, vocab, \
-				subset_size, tag_to_ind_map, is_bag_of_words(model_name),\
-				True, get_word_encoding(model_name))
+				subset_size, tag_to_ind_map, is_bag_of_words(model._name),\
+				is_basic_feat(model._name), get_word_encoding(model._name))
 
+			if model.is_proj_mat():
+				x_vecs = project_features(model._proj_mat, x_vecs)
+	
 			clf.partial_fit(x_vecs, y_labels, y_all)
 			y_pred = clf.predict(x_vecs)
 			n_match += np.sum([y_pred[j] == y_labels[j] for j in range(len(y_labels))])
@@ -132,7 +149,5 @@ def linear_model(trees, samples, vocab, tag_to_ind_map, \
 			print("epoch {0} num matches {1:.3f}%".format(\
 				epoch, n_match / n_samples_in_epoch * 100))
 			n_match = 0
-		evaluate(model_name, clf, vocab, tag_to_ind_map, gen_dep)
+		evaluate(model, clf, vocab, tag_to_ind_map, gen_dep)
 		gen_dep = False
-
-	return clf
