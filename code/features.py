@@ -11,6 +11,9 @@ import numpy as np
 
 import random
 
+import sys
+sys.stdout.flush()
+
 def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, \
 	bag_of_words=False, basic_feat=True, word_encoding='embedd'):
 	"""
@@ -64,15 +67,18 @@ def add_features_per_sample(sample, vocab, tag_to_ind_map, use_def=False, \
 	feat_names = []
 	split_edus = []
 	tags_edus = []
+	head_set_edus = []
 	tree = sample._tree
 	for i in range(len(sample._state)):
 		edu_ind = sample._state[i]
 		if edu_ind > 0:
 			split_edus.append(split_edu_to_tokens(tree, edu_ind))
 			tags_edus.append(split_edu_to_tags(tree, edu_ind))
+			head_set_edus.append(tree._EDU_head_set[edu_ind])
 		else:
  			split_edus.append([''])
  			tags_edus.append([''])
+ 			head_set_edus.append([''])
 
 	feat_names.append(['BEG-WORD-STACK1', 'BEG-WORD-STACK2', 'BEG-WORD-QUEUE1'])
 	feat_names.append(['SEC-WORD-STACK1', 'SEC-WORD-STACK2', 'SEC-WORD-QUEUE1'])
@@ -94,6 +100,9 @@ def add_features_per_sample(sample, vocab, tag_to_ind_map, use_def=False, \
 
 		feat_names = ['END-TAG-STACK1', 'END-TAG-STACK2', 'END-TAG-QUEUE1']
 		add_tag_features(features, tags_edus, feat_names, -1, tag_to_ind_map)
+
+		feat_names = ['1-HEAD-SET-STACK1', '1-HEAD-SET-STACK2', '1-HEAD-SET-QUEUE1']
+		add_head_set(features, head_set_edus, feat_names, 0)
 
 	add_edu_features(features, tree, sample._state, split_edus, vocab, \
 		use_def, bag_of_words)
@@ -119,6 +128,15 @@ def add_tag_features(features, tags_edus, feat_names, tag_loc, tag_to_ind_map):
 		if tags != ['']:
 			if tag_loc < 0 or len(tags) > tag_loc:
 				features[feat] = tags[tag_loc]
+
+def add_head_set(features, head_set_edus, feat_names, word_loc):
+	for i in range(len(head_set_edus)):
+		head_set = head_set_edus[i]
+		feat = feat_names[i]
+		features[feat] = DEFAULT_TOKEN
+		if head_set != ['']:
+			if len(head_set) > word_loc:
+				features[feat] = head_set[word_loc]
 
 def add_edu_features(features, tree, edus_ind, split_edus, vocab, use_def, \
 	bag_of_words):
@@ -169,8 +187,13 @@ def gen_vectorized_features(features, vocab, tag_to_ind_map, use_def, basic_feat
 	for key, val in features.items():
 		if not basic_feat and 'EDU' not in key:
 			continue
-		# print("key {} val {}".format(key, val))
-		if 'WORD' in key:
+		# print("key {} val '{}'".format(key, val))
+		if 'HEAD-SET' in key:
+			# overwrite use_def to True since vocab and dependency graph were 
+			# built by different tokenizer. Thus some head word set may not exist in 
+			# vocab even in training data set.
+			vecs += gen_word_vectorized_feat(vocab, val, True, word_encoding)
+		elif 'WORD' in key:
 			vecs += gen_word_vectorized_feat(vocab, val, use_def, word_encoding)
 		elif 'TAG' in key:
 			vecs += [normalized(get_tag_ind(tag_to_ind_map, val, use_def), n_tags)]

@@ -8,11 +8,12 @@ from nltk import pos_tag
 from collections import defaultdict
 import os
 
+from general import *
+
 from utils import map_to_cluster
 from relations_inventory import build_parser_action_to_ind_mapping
-# from main import SEP
 
-SEP = os.sep
+from dependency_graph import head_set_from_dependency_parse
 
 # debugging 
 print_sents = True
@@ -53,10 +54,11 @@ class TreeInfo(object):
 		self._root = ''
 		self._EDUS_table = ['']
 		self._sents = ['']
-		self._edu_to_sent_ind = ['']
+		self._edu_to_sent_ind = [0]
 		self._edu_word_tag_table = [['']]
+		self._EDU_head_set = [[]]
 
-def preprocess(path, dis_files_dir, ser_files_dir='', bin_files_dir=''):
+def preprocess(path, dis_files_dir, gen_dep=False, ser_files_dir='', bin_files_dir=''):
 	build_parser_action_to_ind_mapping()
 
 	trees = binarize_files(path, dis_files_dir, bin_files_dir)
@@ -64,15 +66,7 @@ def preprocess(path, dis_files_dir, ser_files_dir='', bin_files_dir=''):
 	if ser_files_dir != '':
 		print_serial_files(path, trees, ser_files_dir)
 
-	gen_sentences(trees, path, dis_files_dir)
-
-	# statistics (debugging)
-	num_edus = 0
-	match_edus = 0
-
 	for tree in trees:
-		sent_ind = 1
-		n_sents = len(tree._sents)
 		fn = build_infile_name(tree._fname, path, dis_files_dir, ["out.edus", "edus"])
 		with open(fn) as fh:
 			for edu in fh:
@@ -80,20 +74,21 @@ def preprocess(path, dis_files_dir, ser_files_dir='', bin_files_dir=''):
 				edu_tokenized = tokenize.word_tokenize(edu)
 				tree._edu_word_tag_table.append(nltk.pos_tag(edu_tokenized))
 				tree._EDUS_table.append(edu)
-				if not is_edu_in_sent(edu, tree._sents[sent_ind]):
-					sent_ind += 1
-				tree._edu_to_sent_ind.append(sent_ind)
-				if is_edu_in_sent(edu, tree._sents[sent_ind]):
-					match_edus += 1
-				# else:
-				# print("edu {} sent {}".format(edu, tree._sents[sent_ind]))
-				num_edus += 1
-			# assert(sent_ind < n_sents)
 
-	# print("num match between edu and a sentence {} , num edus {} , {}%".\
-	# format(match_edus, num_edus, match_edus / num_edus * 100.0))
+	edu_to_sent_mapping(trees)
+	create_head_set_or_load_from_files(path, "head_set", trees, gen_dep)
 
 	return trees
+
+def create_head_set_or_load_from_files(base_path, files_dir, trees, gen_dep):
+	if gen_dep:
+		head_set_from_dependency_parse(base_path, files_dir, trees)
+	else:
+		for tree in trees:
+			fn = build_infile_name(tree._fname, base_path, files_dir, ["hs"])
+			with open(fn) as fh:
+				for head_set in fh:
+					tree._EDU_head_set.append(head_set.split())
 
 def binarize_files(base_path, dis_files_dir, bin_files_dir):
 	trees = []
@@ -230,6 +225,18 @@ def binarize_tree(node):
 	binarize_tree(l)
 	binarize_tree(r)
 
+def edu_to_sent_mapping(trees):
+	for tree in trees:
+		sent_ind = 1
+		for edu_ind in range(1, len(tree._EDUS_table)):
+			tree._edu_to_sent_ind.append(sent_ind)
+			if edu_ind < len(tree._EDUS_table) - 1:
+				edu = tree._EDUS_table[edu_ind]
+				if edu[-1] == '.' or edu[-2:] == '."' or edu[-1] == "?":
+					edu_next = tree._EDUS_table[edu_ind + 1]
+					if not edu_next[0].islower():
+						sent_ind += 1
+
 # print tree in .dis format (called after binarization)
 
 def print_dis_file(ofh, node, level):
@@ -322,89 +329,6 @@ def gen_tree_stats(node, rel_freq):
 		gen_tree_stats(l, rel_freq)
 		gen_tree_stats(r, rel_freq)
 
-def gen_sentences(trees, base_path, infiles_dir):
-	if print_sents:
-		if not os.path.isdir(sents_dir):
-   			os.makedirs(sents_dir)
-
-	for tree in trees:
-		fn = tree._fname
-		fn = build_infile_name(tree._fname, base_path, infiles_dir, ["out", ""]) 
-		with open(fn) as fh:
-			content = ''
-			lines = fh.readlines()
-			for line in lines:
-				line = sent_transform(line)
-				content += line 
-			content = content.replace(' \n', ' ')
-			content = content.replace('\n', ' ')
-			content = content.replace('  ', ' ')
-			sents = tokenize.sent_tokenize(content)
-			for sent in sents:
-				if sent.strip() == '':
-					continue
-				tree._sents.append(sent)
-
-		if print_sents:
-			fn_sents = build_file_name(tree._fname, base_path, sents_dir, "out.sents")
-			with open(fn_sents, "w") as ofh:
-				for sent in tree._sents[1:]:
-					ofh.write("{}\n".format(sent))
-
-def is_edu_in_sent(edu, sent):
-	edu1 = sent_transform(edu)
-	return edu1 in sent
-
-def sent_transform(str):
-	str1 = str.replace(' . . .', '')
-	str1 = str1.replace('Mr.', 'Mr')
-	str1 = str1.replace('No.', 'No')
-	# 'and. . . some'
-	str1 = re.sub('([^.]*)\. \. \. ([^.]+)', r'\1 \2', str1)
-	str1 = re.sub('([a-zA-Z])\.([a-zA-Z])\.([a-zA-Z])\.', r'\1\2\3', str1)
-	str1 = re.sub('([a-zA-Z])\.([a-zA-Z])\.', r'\1\2', str1)
-	str1 = re.sub('([A-Z][a-z]+)\.', r'\1', str1)
-	return str1
-
-def build_infile_name(fname, base_path, dis_files_dir, suffs):
-	for suf in suffs:
-		fn = build_file_name(fname, base_path, dis_files_dir, suf)
-		if os.path.exists(fn):
-			return fn
-	assert False, "File input does not exist: " +  \
-		SEP.join([base_path, dis_files_dir, fname]) + \
-		" with possible suffices " + "|".join(suffs)
-	return None
-
-def build_file_name(base_fn, base_path, files_dir, suf):
-	fn = base_path
-	fn += SEP
-	fn += files_dir
-	fn += SEP
-	fn += base_fn
-	if suf != '':
-		fn += "."
-		fn += suf
-	return fn
-
-def create_dir(base_path, outdir):
-	remove_dir(base_path, outdir)
-	path = base_path
-	path += SEP
-	path += outdir
-	os.makedirs(path)
-	return path
-
-def remove_dir(base_path, dir):
-	path = base_path
-	path += SEP
-	path += dir
-	if os.path.isdir(dir):
-		path_to_files = path
-		path_to_files += SEP + "*"
-		for fn in glob.glob(path_to_files):
-			os.remove(fn)
-		os.rmdir(path)
 
 def set_print_stat(flag=True):
 	global PRINT_STAT

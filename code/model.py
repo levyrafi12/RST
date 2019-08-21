@@ -6,6 +6,9 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.autograd import Variable
 
+import sys
+sys.stdout.flush()
+
 from features import extract_features
 from features import extract_features_next_subset
 from features import get_word_encoding
@@ -20,14 +23,14 @@ from model_defs import Model
 import sklearn
 import math
 
-def train_model(model_name, trees, samples, vocab, tag_to_ind_map):
+def train_model(model_name, trees, samples, vocab, tag_to_ind_map, gen_dep):
 	model = Model(model_name)
 	if model_name == "neural":
-		neural_network_model(model, trees, samples, vocab, tag_to_ind_map)
+		neural_network_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep)
 	elif model_name == "dplp":
 		dplp_model(model, trees, samples, vocab, tag_to_ind_map)
 	else:
-		linear_model(model, trees, samples, vocab, tag_to_ind_map)
+		linear_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep)
 	return model
 
 hidden_size = 128
@@ -53,8 +56,7 @@ class Network(nn.Module):
         return F.relu(self.fc2(x))
  
 def neural_network_model(model, trees, samples, vocab, tag_to_ind_map, \
-	n_epoch=10, subset_size=64, print_every=1):
-
+	gen_dep, n_epoch=10, subset_size=64, print_every=1):
 	num_classes = len(ind_to_action_map)
 	subset_size = min(subset_size, len(samples))
 
@@ -93,7 +95,8 @@ def neural_network_model(model, trees, samples, vocab, tag_to_ind_map, \
 			print("epoch {0} num matches = {1:.3f}% loss {2:.3f}".\
 				format(epoch, n_match / len(samples) * 100, loss.item()))
 			n_match = 0
-		evaluate(model, vocab, tag_to_ind_map)
+		evaluate(model, vocab, tag_to_ind_map, gen_dep)
+		gen_dep = False
 
 	# for param in net.parameters():
 	# print(param.data)
@@ -103,7 +106,7 @@ def dplp_model(model, trees, samples, vocab, tag_to_ind_map):
 	# linear_model(model, trees, samples, vocab, tag_to_ind_map)
 
 def linear_model(model, trees, samples, vocab, tag_to_ind_map, \
-	n_epoch=10, subset_size=64, print_every=1):
+	gen_dep, n_epoch=10, subset_size=64, print_every=1):
 
 	[x_vecs, _] = extract_features(trees, samples, vocab, 1, tag_to_ind_map, \
 		is_bag_of_words(model._name), is_basic_feat(model._name), \
@@ -146,4 +149,5 @@ def linear_model(model, trees, samples, vocab, tag_to_ind_map, \
 			print("epoch {0} num matches {1:.3f}%".format(\
 				epoch, n_match / n_samples_in_epoch * 100))
 			n_match = 0
-		evaluate(model, vocab, tag_to_ind_map)
+		evaluate(model, clf, vocab, tag_to_ind_map, gen_dep)
+		gen_dep = False
