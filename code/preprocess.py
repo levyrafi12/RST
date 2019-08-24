@@ -57,6 +57,8 @@ class TreeInfo(object):
 		self._edu_to_sent_ind = [0]
 		self._edu_word_tag_table = [['']]
 		self._EDU_head_set = [[]]
+		self._sent_tokenized_table = [['']]
+		self._sent_pos_tag_table = [['']]
 
 def preprocess(path, dis_files_dir, gen_dep=False, ser_files_dir='', bin_files_dir=''):
 	build_parser_action_to_ind_mapping()
@@ -75,10 +77,10 @@ def preprocess(path, dis_files_dir, gen_dep=False, ser_files_dir='', bin_files_d
 				tree._edu_word_tag_table.append(nltk.pos_tag(edu_tokenized))
 				tree._EDUS_table.append(edu)
 
-	edu_to_sent_mapping(trees)
+	max_words_in_sent = gen_sentences(trees)t
 	create_head_set_or_load_from_files(path, "head_set", trees, gen_dep)
 
-	return trees
+	return trees, max_words_in_sent
 
 def create_head_set_or_load_from_files(base_path, files_dir, trees, gen_dep):
 	if gen_dep:
@@ -225,18 +227,34 @@ def binarize_tree(node):
 	binarize_tree(l)
 	binarize_tree(r)
 
-def edu_to_sent_mapping(trees):
+def gen_sentences(trees):
 	for tree in trees:
 		sent_ind = 1
+		edus_in_sent = []
+		last_edu_in_set = False
 		for edu_ind in range(1, len(tree._EDUS_table)):
+			edu = tree._EDUS_table[edu_ind]
 			tree._edu_to_sent_ind.append(sent_ind)
+			edus_in_sent.append(edu)
 			if edu_ind < len(tree._EDUS_table) - 1:
-				edu = tree._EDUS_table[edu_ind]
 				if edu[-1] == '.' or edu[-2:] == '."' or edu[-1] == "?":
 					edu_next = tree._EDUS_table[edu_ind + 1]
 					if not edu_next[0].islower():
 						sent_ind += 1
+						last_edu_in_sent = True
+			else:
+				last_edu_in_sent = True
 
+			if last_edu_in_sent:
+				last_edu_in_sent = False
+				sent = ' '.join(edus_in_sent)
+				tree._sent_tokenized_table.append(tokenize.word_tokenize(sent))
+				words_in_sent = tree._sent_tokenized_table[-1]
+				tree._sent_pos_tag_table.append(nltk.pos_tag(words_in_sent))
+				max_words_in_sent = max(max_words_in_sent, len(words_in_sent))
+
+	return max_words_in_sent
+	
 # print tree in .dis format (called after binarization)
 
 def print_dis_file(ofh, node, level):

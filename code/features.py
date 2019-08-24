@@ -16,6 +16,15 @@ import random
 import sys
 sys.stdout.flush()
 
+def extract_sent_features(trees, sents, pos_tags, vocab, subset_size):
+	x_vecs = []
+	
+	rand_sents = np.arange(len(sents))
+	np.random.shuffle(rand_sents)
+
+	for i in range(subset_size):
+		sent_ind = rand_sents[i]
+
 def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, \
 	bag_of_words=False, basic_feat=True, word_encoding='embedd'):
 	"""

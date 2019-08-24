@@ -26,6 +26,8 @@ class Sample(object):
 
 def gen_train_data(trees, path, print_data=False):
 	samples = []
+	sents = []
+	pos_tags = []
 
 	for tree in trees:
 		fn = build_file_name(tree._fname, path, "TRAINING", "out.edus")
@@ -52,12 +54,17 @@ def gen_train_data(trees, path, print_data=False):
 			sample._tree = tree
 			samples.append(sample)
 
+		for sent in tree._sent_tokenized_table:
+			sents.append(sent)
+		for pos_tags in tree._sent_pos_tag_table:
+			pos_tags.append(pos_tags)
+
 	y_all = [action_to_ind_map[samples[i]._action] for i in range(len(samples))]
 	y_all = np.unique(y_all)
 
 	sys.stdout.flush()
 
-	return [samples, y_all]
+	return [samples, y_all, sents, pos_tags]
 					
 def gen_train_data_tree(node, stack, queue, samples):
 	# node.print_info()
