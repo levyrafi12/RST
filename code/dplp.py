@@ -63,8 +63,8 @@ def dplp_algo(model, trees, samples, vocab, tag_to_ind_map, subset_size=500, pri
 		is_basic_feat(model._name), get_word_encoding(model._name))
 	x_vecs = project_features(A_t, x_vecs)
 
-	# clf.fit(x_vecs, y_labels)
-	clf = svm.SVC(C=C, kernel='linear', decision_function_shape='ovr')
+	clf.fit(x_vecs, y_labels)
+	# clf = svm.SVC(C=C, kernel='linear', decision_function_shape='ovr')
 	clf.fit(x_vecs, y_labels)
 	model._proj_mat = A_t
 	model._clf = clf

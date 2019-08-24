@@ -149,5 +149,5 @@ def linear_model(model, trees, samples, vocab, tag_to_ind_map, \
 			print("epoch {0} num matches {1:.3f}%".format(\
 				epoch, n_match / n_samples_in_epoch * 100))
 			n_match = 0
-		evaluate(model, clf, vocab, tag_to_ind_map, gen_dep)
+		evaluate(model, vocab, tag_to_ind_map, gen_dep)
 		gen_dep = False

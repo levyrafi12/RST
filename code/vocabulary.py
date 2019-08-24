@@ -73,6 +73,21 @@ def gen_one_hot_vector(vocab, ind):
 	vec[ind] = 1
 	return vec
 
+def gen_tag_one_hot_vector(tag_to_ind_map, val, use_def_word=False):
+	"""
+		generate one hot vector for a token ind (word)
+	""" 
+	vec = len(tag_to_ind_map) * [0]
+	tag_ind = tag_to_ind_map[val]
+	if tag_ind == None:
+		if not use_def_word:
+			assert False, "Could not find tag: " + val
+		else:
+			tag_ind = 0 # tag_to_ind_map[''] = 0
+
+	vec[tag_ind] = 1
+	return vec
+
 def gen_bag_of_words(tree, vocab, edu_ind, use_def_word=False):
 	zeros = len(vocab._tokens) * [0]
 	if edu_ind == 0:

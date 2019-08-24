@@ -7,6 +7,8 @@ from vocabulary import DEFAULT_TOKEN # empty string
 from vocabulary import get_tag_ind
 from vocabulary import gen_one_hot_vector
 from vocabulary import gen_bag_of_words
+from vocabulary import gen_tag_one_hot_vector
+
 import numpy as np
 
 import random
@@ -196,7 +198,8 @@ def gen_vectorized_features(features, vocab, tag_to_ind_map, use_def, basic_feat
 		elif 'WORD' in key:
 			vecs += gen_word_vectorized_feat(vocab, val, use_def, word_encoding)
 		elif 'TAG' in key:
-			vecs += [normalized(get_tag_ind(tag_to_ind_map, val, use_def), n_tags)]
+			# vecs += [normalized(get_tag_ind(tag_to_ind_map, val, use_def), n_tags)]
+			vecs += gen_tag_one_hot_vector(tag_to_ind_map, val, use_def)
 		elif 'EDU' in key:
 			vecs += val
 		else:
