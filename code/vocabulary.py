@@ -20,7 +20,8 @@ class Vocab(object):
 		self._tokens = { DEFAULT_TOKEN: 0} 
 		self._wordVectors = []
 
-def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", print_vocab=False):
+def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", glove_dim, \
+	print_vocab=False):
 	vocab = Vocab()
 
 	word_ind = 1
@@ -36,7 +37,10 @@ def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", pr
 	glove_fn += SEP
 	glove_fn += glove_dir
 	glove_fn += SEP
-	glove_fn += "glove.6B.50d.txt"
+	glove_fn += "glove.6B."
+	glove_fn += str(glove_dim)
+	glove_fn += "d.txt"
+	
 	assert os.path.exists(glove_fn), "file does not exists: " + glove_fn
 	
 	vocab._wordVectors = loadWordVectors(vocab._tokens, glove_fn)

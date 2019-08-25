@@ -77,7 +77,7 @@ def preprocess(path, dis_files_dir, gen_dep=False, ser_files_dir='', bin_files_d
 				tree._edu_word_tag_table.append(nltk.pos_tag(edu_tokenized))
 				tree._EDUS_table.append(edu)
 
-	max_words_in_sent = gen_sentences(trees)t
+	max_words_in_sent = gen_sentences(trees)
 	create_head_set_or_load_from_files(path, "head_set", trees, gen_dep)
 
 	return trees, max_words_in_sent
@@ -228,10 +228,11 @@ def binarize_tree(node):
 	binarize_tree(r)
 
 def gen_sentences(trees):
+	max_sent_len = 0
 	for tree in trees:
 		sent_ind = 1
 		edus_in_sent = []
-		last_edu_in_set = False
+		last_edu_in_sent = False
 		for edu_ind in range(1, len(tree._EDUS_table)):
 			edu = tree._EDUS_table[edu_ind]
 			tree._edu_to_sent_ind.append(sent_ind)
@@ -251,10 +252,11 @@ def gen_sentences(trees):
 				tree._sent_tokenized_table.append(tokenize.word_tokenize(sent))
 				words_in_sent = tree._sent_tokenized_table[-1]
 				tree._sent_pos_tag_table.append(nltk.pos_tag(words_in_sent))
-				max_words_in_sent = max(max_words_in_sent, len(words_in_sent))
+				max_sent_len = max(max_sent_len, len(words_in_sent))
+				print("{} {}".format(len(words_in_sent), len(tree._sent_pos_tag_table[-1])))
 
 	return max_words_in_sent
-	
+
 # print tree in .dis format (called after binarization)
 
 def print_dis_file(ofh, node, level):

@@ -24,7 +24,7 @@ import sklearn
 import math
 
 def train_model(model_name, trees, samples, sents, pos_tags, vocab, tag_to_ind_map, \
-	gen_dep, max_words_in_sent):
+	gen_dep, max_sent_len):
 	model = Model(model_name)
 	if model_name == "neural":
 		neural_network_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep)
@@ -32,7 +32,7 @@ def train_model(model_name, trees, samples, sents, pos_tags, vocab, tag_to_ind_m
 		dplp_model(model, trees, samples, vocab, tag_to_ind_map)
 	elif model_name == "encoder":
 		sequence_model(model, trees, samples, sents, pos_tags, vocab, tag_to_ind_map, \
-			max_words_in_sent)
+			max_sent_len)
 	else:
 		linear_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep)
 	return model

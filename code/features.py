@@ -16,15 +16,6 @@ import random
 import sys
 sys.stdout.flush()
 
-def extract_sent_features(trees, sents, pos_tags, vocab, subset_size):
-	x_vecs = []
-	
-	rand_sents = np.arange(len(sents))
-	np.random.shuffle(rand_sents)
-
-	for i in range(subset_size):
-		sent_ind = rand_sents[i]
-
 def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, \
 	bag_of_words=False, basic_feat=True, word_encoding='embedd'):
 	"""
@@ -64,6 +55,37 @@ def extract_features_next_subset(trees, samples, vocab, subset_size, tag_to_ind_
 			yield [x_vecs, y_labels]
 			x_vecs = []
 			y_labels = []
+
+def extract_seq_features(trees, sents, pos_tags, vocab, tag_to_ind_map, subset_size):
+	sents_emb = [] # sentences embeddings
+
+	rand_sents = np.arange(len(sents))
+	np.random.shuffle(rand_sents)
+
+	for i in range(subset_size):
+		sent_emb = []
+		sent_ind = rand_sents[i]
+		words_emb = gen_words_emb(sents[sent_ind], vocab)
+		tags_emb = gen_pos_tags_emb(pos_tags[sent_ind], tag_to_ind_map)
+		for word_e, tag_e in list(zip(sent_emb, tags_emb)):
+			sent_emb.append(word_e + tag_e) # concatenation
+		sents_emb.append(np.array(sent_emb))
+		
+	return sents_emb
+
+def gen_words_emb(sent, vocab, use_def=False):
+	vecs = []
+	for word in sent:
+		vec = gen_word_vectorized_feat(vocab, word, use_def, 'embedd')
+		vecs.append(vec)
+	return vecs
+
+def gen_tags_emb(pos_tags, tag_to_ind_map, use_def=False):
+	vecs = []
+	for tag in pos_tags:_
+		vec = gen_tag_one_hot_vector(tag_to_ind_map, tag, use_def)
+		vecs.append(vec)
+	return vecs
 
 def extend_features_vec(samples, sample_ind, vocab, tag_to_ind_map, x_vecs, y_labels, \
 	bag_of_words, basic_feat, word_encoding):

@@ -54,15 +54,13 @@ def gen_train_data(trees, path, print_data=False):
 			sample._tree = tree
 			samples.append(sample)
 
-		for sent in tree._sent_tokenized_table:
+		for sent in tree._sent_tokenized_table[1:]:
 			sents.append(sent)
-		for pos_tags in tree._sent_pos_tag_table:
+		for pos_tags in tree._sent_pos_tag_table[1:]:
 			pos_tags.append(pos_tags)
 
 	y_all = [action_to_ind_map[samples[i]._action] for i in range(len(samples))]
 	y_all = np.unique(y_all)
-
-	sys.stdout.flush()
 
 	return [samples, y_all, sents, pos_tags]
 					

@@ -57,20 +57,22 @@ def parse_args(argv):
 	
 if __name__ == '__main__':
 	[model_name, baseline, print_stats, k_top, gen_dep] = parse_args(sys.argv)
+	word_emb_dim = 50 if model_name != "seq" else 200
 
 	print("preprocessing [{}]".format(datetime.datetime.now()))
-	trees, max_words_in_sent = preprocess(WORK_DIR, TRAINING_DIR, gen_dep)
+	trees, max_sent_len = preprocess(WORK_DIR, TRAINING_DIR, gen_dep)
 	if print_stats:
 		print_trees_stats(trees)
 
-	[vocab, tag_to_ind_map] = gen_vocabulary(trees, WORK_DIR, TRAINING_DIR, GLOVE_DIR)
+	[vocab, tag_to_ind_map] = gen_vocabulary(trees, WORK_DIR, TRAINING_DIR, GLOVE_DIR, \
+		word_emb_dim)
 
 	model = '' # model data structure
 	if not baseline:
 		print("training [{}]".format(datetime.datetime.now()))
 		[samples, y_all, sents, pos_tags] = gen_train_data(trees, WORK_DIR)
 		model = train_model(model_name, trees, samples, sents, pos_tags, vocab, \
-			tag_to_ind_map, gen_dep, max_words_in_sent)
+			tag_to_ind_map, gen_dep, max_sent_len)
 
 	print("evaluate [{}]".format(datetime.datetime.now()))
 	evaluate(model, vocab, tag_to_ind_map, gen_dep, baseline, k_top)
