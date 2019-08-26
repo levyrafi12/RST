@@ -57,7 +57,7 @@ def parse_args(argv):
 	
 if __name__ == '__main__':
 	[model_name, baseline, print_stats, k_top, gen_dep] = parse_args(sys.argv)
-	word_emb_dim = 50 if model_name != "seq" else 200
+	glove_dim = 50 if model_name != "seq" else 200
 
 	print("preprocessing [{}]".format(datetime.datetime.now()))
 	trees, max_sent_len = preprocess(WORK_DIR, TRAINING_DIR, gen_dep)
@@ -65,7 +65,7 @@ if __name__ == '__main__':
 		print_trees_stats(trees)
 
 	[vocab, tag_to_ind_map] = gen_vocabulary(trees, WORK_DIR, TRAINING_DIR, GLOVE_DIR, \
-		word_emb_dim)
+		glove_dim)
 
 	model = '' # model data structure
 	if not baseline:

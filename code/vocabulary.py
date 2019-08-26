@@ -20,8 +20,8 @@ class Vocab(object):
 		self._tokens = { DEFAULT_TOKEN: 0} 
 		self._wordVectors = []
 
-def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", glove_dim, \
-	print_vocab=False):
+def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", \
+	glove_dim=50, print_vocab=False):
 	vocab = Vocab()
 
 	word_ind = 1
@@ -40,10 +40,10 @@ def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", gl
 	glove_fn += "glove.6B."
 	glove_fn += str(glove_dim)
 	glove_fn += "d.txt"
-	
+
 	assert os.path.exists(glove_fn), "file does not exists: " + glove_fn
 	
-	vocab._wordVectors = loadWordVectors(vocab._tokens, glove_fn)
+	vocab._wordVectors = loadWordVectors(vocab._tokens, glove_fn, glove_dim)
 
 	if print_vocab:
 		n_founds = 0
@@ -82,13 +82,7 @@ def gen_tag_one_hot_vector(tag_to_ind_map, val, use_def_word=False):
 		generate one hot vector for a token ind (word)
 	""" 
 	vec = len(tag_to_ind_map) * [0]
-	tag_ind = tag_to_ind_map[val]
-	if tag_ind == None:
-		if not use_def_word:
-			assert False, "Could not find tag: " + val
-		else:
-			tag_ind = 0 # tag_to_ind_map[''] = 0
-
+	tag_ind = get_tag_ind(tag_to_ind_map, val, use_def_word)
 	vec[tag_ind] = 1
 	return vec
 

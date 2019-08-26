@@ -10,6 +10,7 @@ from vocabulary import gen_bag_of_words
 from vocabulary import gen_tag_one_hot_vector
 
 import numpy as np
+import torch
 
 import random
 
@@ -66,10 +67,12 @@ def extract_seq_features(trees, sents, pos_tags, vocab, tag_to_ind_map, subset_s
 		sent_emb = []
 		sent_ind = rand_sents[i]
 		words_emb = gen_words_emb(sents[sent_ind], vocab)
+		print(words_emb)
 		tags_emb = gen_pos_tags_emb(pos_tags[sent_ind], tag_to_ind_map)
-		for word_e, tag_e in list(zip(sent_emb, tags_emb)):
+		print(tags_emb)
+		for word_e, tag_e in list(zip(words_emb, tags_emb)):
 			sent_emb.append(word_e + tag_e) # concatenation
-		sents_emb.append(np.array(sent_emb))
+		sents_emb.append(torch.tensor(sents_emb))
 		
 	return sents_emb
 
@@ -80,9 +83,9 @@ def gen_words_emb(sent, vocab, use_def=False):
 		vecs.append(vec)
 	return vecs
 
-def gen_tags_emb(pos_tags, tag_to_ind_map, use_def=False):
+def gen_pos_tags_emb(pos_tags, tag_to_ind_map, use_def=False):
 	vecs = []
-	for tag in pos_tags:_
+	for tag in pos_tags:
 		vec = gen_tag_one_hot_vector(tag_to_ind_map, tag, use_def)
 		vecs.append(vec)
 	return vecs

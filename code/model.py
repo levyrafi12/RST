@@ -19,6 +19,7 @@ from relations_inventory import ind_to_action_map
 from rst_parser import evaluate
 from dplp import dplp_algo
 from model_defs import Model
+from sequence import sequence_model
 
 import sklearn
 import math
@@ -30,7 +31,7 @@ def train_model(model_name, trees, samples, sents, pos_tags, vocab, tag_to_ind_m
 		neural_network_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep)
 	elif model_name == "dplp":
 		dplp_model(model, trees, samples, vocab, tag_to_ind_map)
-	elif model_name == "encoder":
+	elif model_name == "seq":
 		sequence_model(model, trees, samples, sents, pos_tags, vocab, tag_to_ind_map, \
 			max_sent_len)
 	else:
