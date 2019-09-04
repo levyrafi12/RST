@@ -67,13 +67,12 @@ def extract_seq_features(trees, sents, pos_tags, vocab, tag_to_ind_map, subset_s
 		sent_emb = []
 		sent_ind = rand_sents[i]
 		words_emb = gen_words_emb(sents[sent_ind], vocab)
-		print(words_emb)
 		tags_emb = gen_pos_tags_emb(pos_tags[sent_ind], tag_to_ind_map)
-		print(tags_emb)
 		for word_e, tag_e in list(zip(words_emb, tags_emb)):
 			sent_emb.append(word_e + tag_e) # concatenation
-		sents_emb.append(torch.tensor(sents_emb))
-		
+		sents_emb.append(torch.tensor(sent_emb))
+
+	sents_emb.sort(key=len, reverse=True)
 	return sents_emb
 
 def gen_words_emb(sent, vocab, use_def=False):

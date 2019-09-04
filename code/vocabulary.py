@@ -32,6 +32,13 @@ def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", \
 				if not vocab._tokens.get(word.lower()):
 					vocab_set(vocab, word, word_ind)
 					word_ind += 1
+		# tokenizing the sentence may slightly produce different results 
+		# than tokenizing the EDUS of the sentence.
+		for sent in tree._sent_tokenized_table[1:]:
+			for word in sent:
+				if not vocab._tokens.get(word.lower()):
+					vocab_set(vocab, word, word_ind)
+					word_ind += 1
 
 	glove_fn = base_path
 	glove_fn += SEP

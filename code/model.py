@@ -46,29 +46,32 @@ class Network(nn.Module):
     def __init__(self, n_features, hidden_size, num_classes):
         super(Network, self).__init__()
         self.fc1 = nn.Linear(n_features, hidden_size)
-        # self.fc1.weight.data.fill_(1.0)
         nn.init.normal_(self.fc1.weight.data)
         self.fc1.weight.data *= np.sqrt(2 / n_features)
         self.fc1.bias.data.fill_(0.0)
-        self.fc2 = nn.Linear(hidden_size, num_classes)
-        # self.fc2.weight.data.fill_(1.0)
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
         nn.init.normal_(self.fc2.weight.data)
         self.fc2.weight.data *= np.sqrt(2 / hidden_size)
         self.fc2.bias.data.fill_(0.0)
+        self.fc3 = nn.Linear(hidden_size, num_classes)
+        nn.init.normal_(self.fc3.weight.data)
+        self.fc3.weight.data *= np.sqrt(2 / hidden_size)
+        self.fc3.bias.data.fill_(0.0)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
-        return F.relu(self.fc2(x))
+        x = F.relu(self.fc2(x))
+        return self.fc3(x)
  
 def neural_network_model(model, trees, samples, vocab, tag_to_ind_map, \
-	gen_dep, n_epoch=10, subset_size=64, print_every=1):
+	gen_dep, n_epoch=20, subset_size=64, print_every=1):
 	num_classes = len(ind_to_action_map)
 	subset_size = min(subset_size, len(samples))
 
 	[x_vecs, _] = extract_features(trees, samples, vocab, 1, tag_to_ind_map)
 
-	print("num features {}, num classes {}, num samples {} subset size {}".\
-		format(len(x_vecs[0]), num_classes, len(samples), subset_size))
+	print("num features {}, num classes {}, num samples {} subset size {} vocab {}".\
+		format(len(x_vecs[0]), num_classes, len(samples), subset_size), len(vocab))
 	print("Running neural model")
 
 	net = Network(len(x_vecs[0]), hidden_size, num_classes)
@@ -123,8 +126,8 @@ def linear_model(model, trees, samples, vocab, tag_to_ind_map, \
 	y_all = list(range(len(ind_to_action_map)))
 	subset_size = min(subset_size, len(samples))
 
-	print("num features {}, num classes {}, num samples {} subset size {}".\
-		format(len(x_vecs[0]), len(y_all), len(samples), subset_size))
+	print("num features {}, num classes {}, num samples {} subset size {} vocab {}".\
+		format(len(x_vecs[0]), len(y_all), len(samples), subset_size, len(vocab)))
 
 	print("Running {} model 'word encoding' {} 'bag of words' {} 'basic feat' {}".\
 		format(model._name, get_word_encoding(model._name), \

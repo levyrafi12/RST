@@ -230,7 +230,6 @@ def binarize_tree(node):
 def gen_sentences(trees):
 	max_sent_len = 0
 	for tree in trees:
-		print(tree._fname)
 		sent_ind = 1
 		edus_in_sent = []
 		last_edu_in_sent = False
@@ -239,7 +238,7 @@ def gen_sentences(trees):
 			tree._edu_to_sent_ind.append(sent_ind)
 			edus_in_sent.append(edu)
 			if edu_ind < len(tree._EDUS_table) - 1:
-				if edu[-1] == '.' or edu[-2:] == '."' or edu[-1] == "?":
+				if edu[-1] == '.' or edu[-2:] == '."' or edu[-1] == "?" or edu[-1] == "!":
 					edu_next = tree._EDUS_table[edu_ind + 1]
 					if not edu_next[0].islower():
 						sent_ind += 1
@@ -250,9 +249,9 @@ def gen_sentences(trees):
 			if last_edu_in_sent:
 				last_edu_in_sent = False
 				sent = ' '.join(edus_in_sent)
+				edus_in_sent = []
 				tree._sent_tokenized_table.append(tokenize.word_tokenize(sent))
 				words_in_sent = tree._sent_tokenized_table[-1]
-				print(words_in_sent)
 				tree._sent_pos_tag_table.append([tag for _, tag in nltk.pos_tag(words_in_sent)])
 				max_sent_len = max(max_sent_len, len(words_in_sent))
 
