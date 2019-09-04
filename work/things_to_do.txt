@@ -1,0 +1,3 @@
+things to do:
+
+1. in sentence generation - treat the title as a sentence (1339)
