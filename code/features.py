@@ -57,23 +57,26 @@ def extract_features_next_subset(trees, samples, vocab, subset_size, tag_to_ind_
 			x_vecs = []
 			y_labels = []
 
-def extract_seq_features(trees, sents, pos_tags, vocab, tag_to_ind_map, subset_size):
-	sents_emb = [] # sentences embeddings
+def extract_sents_features(sents, pos_tags, vocab, tag_to_ind_map):
+	sents_ind_emb = [] # pairs of sent ind and sentence embedding
+	sent_ind = 1
 
-	rand_sents = np.arange(len(sents))
-	np.random.shuffle(rand_sents)
-
-	for i in range(subset_size):
+	for sent, sent_pos_tags in list(zip(sents, pos_tags)):
 		sent_emb = []
-		sent_ind = rand_sents[i]
-		words_emb = gen_words_emb(sents[sent_ind], vocab)
-		tags_emb = gen_pos_tags_emb(pos_tags[sent_ind], tag_to_ind_map)
+		words_emb = gen_words_emb(sent, vocab)
+		tags_emb = gen_pos_tags_emb(sent_pos_tags, tag_to_ind_map)
 		for word_e, tag_e in list(zip(words_emb, tags_emb)):
 			sent_emb.append(word_e + tag_e) # concatenation
-		sents_emb.append(torch.tensor(sent_emb))
+		# tensor shape is sent_len * word_emb_dim
+		sents_ind_emb.append((sent_ind, torch.tensor(sent_emb)))   
+		sent_ind += 1
 
-	sents_emb.sort(key=len, reverse=True)
-	return sents_emb
+	# sort by the number of the rows of the tensors
+	sents_ind_emb.sort(key=lambda elem: len(elem[1]), reverse=True) 
+	sent_ind_map = [elem[0] for elem in sents_ind_emb]
+	sents_emb = [elem[1] for elem in sents_ind_emb]
+
+	return sents_emb, sent_ind_map
 
 def gen_words_emb(sent, vocab, use_def=False):
 	vecs = []

@@ -20,6 +20,9 @@ class Vocab(object):
 		self._tokens = { DEFAULT_TOKEN: 0} 
 		self._wordVectors = []
 
+	def len(self):
+		return len(self._tokens)
+		
 def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", \
 	glove_dim=50, print_vocab=False):
 	vocab = Vocab()

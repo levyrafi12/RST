@@ -71,7 +71,7 @@ def neural_network_model(model, trees, samples, vocab, tag_to_ind_map, \
 	[x_vecs, _] = extract_features(trees, samples, vocab, 1, tag_to_ind_map)
 
 	print("num features {}, num classes {}, num samples {} subset size {} vocab {}".\
-		format(len(x_vecs[0]), num_classes, len(samples), subset_size), len(vocab))
+		format(len(x_vecs[0]), num_classes, len(samples), subset_size, vocab.len()))
 	print("Running neural model")
 
 	net = Network(len(x_vecs[0]), hidden_size, num_classes)
@@ -127,7 +127,7 @@ def linear_model(model, trees, samples, vocab, tag_to_ind_map, \
 	subset_size = min(subset_size, len(samples))
 
 	print("num features {}, num classes {}, num samples {} subset size {} vocab {}".\
-		format(len(x_vecs[0]), len(y_all), len(samples), subset_size, len(vocab)))
+		format(len(x_vecs[0]), len(y_all), len(samples), subset_size, vocab.len()))
 
 	print("Running {} model 'word encoding' {} 'bag of words' {} 'basic feat' {}".\
 		format(model._name, get_word_encoding(model._name), \
