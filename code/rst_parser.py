@@ -154,7 +154,7 @@ class ParsersQueue(object):
 		self._parsers.appendleft(parser)
 
 def evaluate(model, vocab, tag_to_ind_map, gen_dep, baseline=False, k_top=1):
-	dev_trees, _ = preprocess(WORK_DIR, DEV_TEST_DIR, gen_dep, DEV_TEST_GOLD_DIR)
+	dev_trees = preprocess(WORK_DIR, DEV_TEST_DIR, gen_dep, DEV_TEST_GOLD_DIR)
 	parse_files(model, dev_trees, vocab, tag_to_ind_map, baseline, k_top)
 
 def parse_files(model, trees, vocab, tag_to_ind_map, baseline, k_top):

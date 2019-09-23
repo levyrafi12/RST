@@ -107,6 +107,7 @@ def add_features_per_sample(sample, vocab, tag_to_ind_map, use_def=False, \
 	tags_edus = []
 	head_set_edus = []
 	tree = sample._tree
+	# print("state {} ".format(sample._state))
 	for i in range(len(sample._state)):
 		edu_ind = sample._state[i]
 		if edu_ind > 0:
@@ -151,6 +152,7 @@ def add_features_per_sample(sample, vocab, tag_to_ind_map, use_def=False, \
 def add_word_features(features, split_edus, feat_names, word_loc):
 	for i in range(len(split_edus)):
 		words = split_edus[i]
+		# print("{} {}".format(len(words), word_loc))
 		feat = feat_names[i]
 		features[feat] = DEFAULT_TOKEN
 		if words != ['']:

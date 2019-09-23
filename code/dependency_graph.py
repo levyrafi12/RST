@@ -1,82 +1,187 @@
 from nltk.parse.corenlp import CoreNLPDependencyParser
 
-from general import *
+from preprocess_util import is_last_edu_in_sent
+from general import * 
+import pickle 
 
-def head_set_from_dependency_parse(base_path, files_dir, trees):
+def gen_and_load_dependency_parser(base_path, files_dir, trees, force_gen=False):
+    path = concat_path(base_path, files_dir)
+
+    if force_gen or not os.path.isdir(path):
+        gen_dependency_parser(base_path, files_dir, trees)
+
+    load_dependency_parser(base_path, files_dir, trees)
+
+def gen_dependency_parser(base_path, files_dir, trees):
+    """
+        call dependency parser and dump parser graphs to files
+    """
     parser = CoreNLPDependencyParser()
 
-    path = base_path
-    path += SEP
-    path += files_dir
+    path = concat_path(base_path, files_dir)
 
     if not os.path.isdir(path):
         create_dir(base_path, files_dir)
 
     for tree in trees:
-        # print(tree._fname)
-        sent_ind = 1
-        edu_in_sent = []
-
+        # print("gen dep parser {}".format(tree._fname))
+        edus_in_sent = []
+        edus_parse = []
+        sents_parse = []
         for edu_ind in range(1, len(tree._EDUS_table)):
-            if tree._edu_to_sent_ind[edu_ind] == sent_ind:
+            edu = tree._EDUS_table[edu_ind]
+            edus_parse.append(parse_text(parser, edu))
+            # print("edu {} {}".format(edu_ind, edus_parse[-1]))
+            edus_in_sent.append(edu)
+            if is_last_edu_in_sent(tree, edu_ind):
+                sent = ' '.join(edus_in_sent)
+                sents_parse.append(parse_text(parser, sent))
+                # print("sent {} {}".format(sent, sents_parse[-1]))
+                edus_in_sent = []
+
+        outfn = build_file_name(tree._fname, base_path, files_dir, "dp.edus")
+
+        with open(outfn, "wb") as handle:
+            pickle.dump(edus_parse, handle)
+
+        outfn = build_file_name(tree._fname, base_path, files_dir, "dp.sents")
+
+        with open(outfn, "wb") as handle:
+            pickle.dump(sents_parse, handle)
+
+def load_dependency_parser(base_path, files_dir, trees):
+    for tree in trees:
+        # print("load dep parser {}".format(tree._fname))
+        infn = build_infile_name(tree._fname, base_path, files_dir, ["dp.edus"])
+
+        with open(infn, "rb") as handle:
+            tree._EDUS_parse += pickle.load(handle)
+
+        infn = build_infile_name(tree._fname, base_path, files_dir, ["dp.sents"])
+
+        with open(infn, "rb") as handle:
+            tree._sents_parse += pickle.load(handle)
+
+        n_edus = len(tree._EDUS_table)
+        first_edu_ind = 1 # index of first edu in sent
+        sent_ind = 1
+
+        for sent_parse in tree._sents_parse[1:]:
+            # print("sent ind {} {}".format(sent_ind, tree._sents[sent_ind]))
+            # print("sent parse {}".format(sent_parse))
+            sent_words = extract_parse_attr(sent_parse, 'word')
+            tree._sent_tokenized_table.append(sent_words[1:])
+            sent_pos_tags = extract_parse_attr(sent_parse, 'tag')
+            tree._sent_pos_tags_table.append(sent_pos_tags[1:])
+            assert first_edu_ind < n_edus, print("too few edus")
+
+            for edu_ind in range(first_edu_ind, n_edus):
+                tree._edu_to_sent_ind.append(sent_ind)
                 edu = tree._EDUS_table[edu_ind]
-                edu_in_sent.append(edu)
-            else:
-                create_edus_head_set(parser, tree, edu_in_sent)
-                sent_ind += 1
-                edu_in_sent = []
-                edu_in_sent.append(edu)
+                # print("sent ind {} edu ind {} {}".format(sent_ind, edu_ind, edu))
+                edu_parse = tree._EDUS_parse[edu_ind]
+                # print(edu_parse)
+                is_new_sent = edu_ind == first_edu_ind
+                l, h = set_edu_segment_in_sent(tree, sent_parse, edu_parse, is_new_sent)
+                # print("low {} high {} sent len {}".format(l, h, len(tree._sents_parse[sent_ind]) - 1))
+                set_edu_head_set(tree, sent_ind, edu_ind)
+                if is_last_edu_in_sent(tree, edu_ind):
+                    assert tree._edus_seg_in_sent[-1][1] == len(sent_parse) - 1, \
+                        print("bad partition to edus in sent: end pos {}, len sent {}". \
+                            format(tree._edus_seg_in_sent[-1][1], len(sent_parse) - 1))
+                    first_edu_ind = edu_ind + 1
+                    sent_ind += 1
+                    break
 
-        create_edus_head_set(parser, tree, edu_in_sent)
-        outfn = build_file_name(tree._fname, base_path, files_dir, "hs")
-
-        with open(outfn, "w") as ofh:
-            for edu_ind in range(1, len(tree._EDUS_table)):
-                ofh.write("{}\n".format(' '.join(tree._EDU_head_set[edu_ind])))
-
-def create_edus_head_set(parser, tree, edu_in_sent):
+def set_edu_head_set(tree, sent_ind, edu_ind):
     """
-        Find head word set for each EDU in sentence. This set includes words whose 
-        parent in dependency graph is ROOT or is not within the EDU.
+        Find the head word set for a given EDU in a sentence. This set includes words whose 
+        parent in dependency graph is ROOT (a verb) or is not within the EDU.
 
     """ 
-    sent = ''
-    for edu in edu_in_sent:
-        sent += edu
-        sent += ' '
+    sent_parse = tree._sents_parse[sent_ind]
+    low, high = tree._edus_seg_in_sent[edu_ind]
+    tree._EDU_head_set.append([])
 
-    parse = next(parser.raw_parse(sent))
+    for i in range(low, high + 1):
+        elem = sent_parse[i]
+        if elem['head'] < low or elem['head'] > high or elem['rel'] == 'ROOT':
+            tree._EDU_head_set[-1].append(elem['word'])
 
-    i = 1
-    for edu in edu_in_sent:
-        parse_edu = next(parser.raw_parse(edu))
-        n_tok_in_edu = num_correct_tokens_in_edu(parser, parse, parse_edu, i)
-        tree._EDU_head_set.append([])
-        head_set = []
-        high = i + n_tok_in_edu - 1
-        low = i
-        for j in range(low, high + 1):
-            elem = parse.nodes[i]
-            if elem['head'] < low or elem['head'] > high:
-                tree._EDU_head_set[-1].append(elem['word'])
-            i += 1
-        # print(tree._EDU_head_set[-1])
-
-def num_correct_tokens_in_edu(parser, parse_sent, parse_edu, ind_in_sent):
+def set_edu_segment_in_sent(tree, sent_parse, edu_parse, is_new_sent):
     """
-        Return number of tokens in edu which are aligned to the sentence tokens
-        Since parser consider edu as a sentence, it adds (or duplicates) in some cases 
-        a dot as a new token (when dot attached to last token "Inc.")
+        Set edu segment boundaries in sentence
     """
-    n_tok = len(parse_edu.nodes)
-    for ind_in_edu in range(1, n_tok):
-        node = parse_edu.nodes[ind_in_edu]
-        if node['word'] != parse_sent.nodes[ind_in_sent]['word']:
-            break
-        else:
-            ind_in_edu += 1
+
+    # print(tree._fname)
+    start_ind = 1 # start scanning sent from position start ind
+
+    if not is_new_sent:
+        _, end_ind = tree._edus_seg_in_sent[-1] 
+        start_ind = end_ind + 1
+
+    ind_in_sent = start_ind
+    # print("ind_in_sent {} is new sent {}".format(start_ind, is_new_sent))
+    n_tokens = len(edu_parse)
+    edu_pos_tags = []
+    edu_words = []
+    for ind_in_edu in range(1, n_tokens):
+        sent_node = sent_parse[ind_in_sent]
+        edu_node = edu_parse[ind_in_edu]
+
+        # Since parser consider edu as a sentence, it adds (in fact duplicates) in some cases 
+        # a dot as a new token (when dot attached to last token "Inc.")
+        if sent_node['word'] == edu_node['word']:
+            edu_words.append(edu_node['word'])
+            edu_pos_tags.append(edu_node['tag'])
             ind_in_sent += 1
-   
-    return ind_in_edu - 1
 
+    tree._edus_seg_in_sent.append((start_ind, ind_in_sent - 1))
+    tree._edu_tokenized_table.append(edu_words)
+    tree._edu_pos_tags_table.append(edu_pos_tags)
+    # print("edu ind {} {} is now sent {}".format(len(tree._edu_tokenized_table[1:]), edu_words, is_new_sent))
+    return start_ind, ind_in_sent - 1
+
+def extract_parse_attr(parse, attr):
+
+    attr_tuples = [(elem[attr], elem['address']) for _, elem in parse.items()]
+    sorted_attr_tuples = sorted(attr_tuples, key=lambda elem: elem[1])
+    return [elem[0] for elem in sorted_attr_tuples]
+
+def combine_parse_data(to_parse, from_parse):
+    # print(to_parse)
+    # print(from_parse)
+
+    dist = len(to_parse) - 1
+    # print(dist)
+
+    del from_parse[0]
+
+    n_keys = len(from_parse)
+    # print(n_keys)
+
+    for key in range(1, n_keys + 1):
+        to_parse[key + dist] = from_parse[key]
+        del from_parse[key]
+        elem = to_parse[key + dist]
+        elem['head'] += dist
+
+    return to_parse
+
+def parse_text(parser, text):
+    last_parse = None
+    mult_parse = parser.parse_text(text)
+
+    while True:
+        try:
+            parse = next(mult_parse)
+            parse = dict(list(parse.nodes.items()))
+            if last_parse == None:
+                last_parse = parse
+            else:
+                last_parse = combine_parse_data(last_parse, parse)
+        except StopIteration:
+            break
+
+    return last_parse
 

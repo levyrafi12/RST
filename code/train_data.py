@@ -56,7 +56,7 @@ def gen_train_data(trees, path, print_data=False):
 
 		for sent in tree._sent_tokenized_table[1:]:
 			sents.append(sent)
-		for pos_tag in tree._sent_pos_tag_table[1:]:
+		for pos_tag in tree._sent_pos_tags_table[1:]:
 			pos_tags.append(pos_tag)
 
 	y_all = [action_to_ind_map[samples[i]._action] for i in range(len(samples))]

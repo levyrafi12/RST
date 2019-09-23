@@ -10,7 +10,6 @@ import re
 import glob
 import copy
 import numpy as np
-import nltk
 import os
 
 DEFAULT_TOKEN = ''
@@ -29,9 +28,8 @@ def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", \
 
 	word_ind = 1
 	for tree in trees:
-		for edu in tree._EDUS_table:
-			edu = nltk.word_tokenize(edu)
-			for word in edu:
+		for word_list in tree._edu_tokenized_table[1:]:
+			for word in word_list:
 				if not vocab._tokens.get(word.lower()):
 					vocab_set(vocab, word, word_ind)
 					word_ind += 1
@@ -72,12 +70,10 @@ def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", \
 	return [vocab, tag_to_ind_map]
 
 def split_edu_to_tokens(tree, edu_ind):
-	word_tag_list = tree._edu_word_tag_table[edu_ind]
-	return [word for word, _ in word_tag_list]
+	return tree._edu_tokenized_table[edu_ind]
 
 def split_edu_to_tags(tree, edu_ind):
-	word_tag_list = tree._edu_word_tag_table[edu_ind]
-	return [tag for _, tag in word_tag_list]
+	return tree._edu_pos_tags_table[edu_ind]
 
 def gen_one_hot_vector(vocab, ind):
 	"""
@@ -120,8 +116,8 @@ def build_tags_dict(trees):
 	tag_ind = 1
 
 	for tree in trees:
-		for word_tag_list in tree._edu_word_tag_table[1:]:
-			for _, tag in word_tag_list:
+		for tag_list in tree._edu_pos_tags_table[1:]:
+			for tag in tag_list:
 				if tag_to_ind_map.get(tag, None) == None:
 					tag_to_ind_map[tag] = tag_ind
 					tag_ind += 1

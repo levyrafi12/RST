@@ -3,6 +3,13 @@ import os
 
 SEP = os.sep
 
+def concat_path(base_path, files_dir):
+	path = base_path
+	path += SEP
+	path += files_dir
+
+	return path
+
 def build_infile_name(fname, base_path, dis_files_dir, suffs):
 	for suf in suffs:
 		fn = build_file_name(fname, base_path, dis_files_dir, suf)

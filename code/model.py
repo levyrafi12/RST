@@ -24,16 +24,14 @@ from sequence import sequence_model
 import sklearn
 import math
 
-def train_model(model_name, trees, samples, sents, pos_tags, vocab, tag_to_ind_map, \
-	gen_dep, max_sent_len):
+def train_model(model_name, trees, samples, sents, pos_tags, vocab, tag_to_ind_map, gen_dep):
 	model = Model(model_name)
 	if model_name == "neural":
 		neural_network_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep)
 	elif model_name == "dplp":
 		dplp_model(model, trees, samples, vocab, tag_to_ind_map)
 	elif model_name == "seq":
-		sequence_model(model, trees, samples, sents, pos_tags, vocab, tag_to_ind_map, \
-			max_sent_len)
+		sequence_model(model, trees, samples, sents, pos_tags, vocab, tag_to_ind_map)
 	else:
 		linear_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep)
 	return model

@@ -60,7 +60,7 @@ if __name__ == '__main__':
 	glove_dim = 50 if model_name != "seq" else 200
 
 	print("preprocessing [{}]".format(datetime.datetime.now()))
-	trees, max_sent_len = preprocess(WORK_DIR, TRAINING_DIR, gen_dep)
+	trees = preprocess(WORK_DIR, TRAINING_DIR, gen_dep)
 	if print_stats:
 		print_trees_stats(trees)
 
@@ -71,8 +71,7 @@ if __name__ == '__main__':
 	if not baseline:
 		print("training [{}]".format(datetime.datetime.now()))
 		[samples, y_all, sents, pos_tags] = gen_train_data(trees, WORK_DIR)
-		model = train_model(model_name, trees, samples, sents, pos_tags, vocab, \
-			tag_to_ind_map, gen_dep, max_sent_len)
+		model = train_model(model_name, trees, samples, sents, pos_tags, vocab, tag_to_ind_map, gen_dep)
 
 	print("evaluate [{}]".format(datetime.datetime.now()))
 	evaluate(model, vocab, tag_to_ind_map, gen_dep, baseline, k_top)

@@ -13,7 +13,8 @@ from general import *
 from utils import map_to_cluster
 from relations_inventory import build_parser_action_to_ind_mapping
 
-from dependency_graph import head_set_from_dependency_parse
+from dependency_graph import gen_and_load_dependency_parser
+from preprocess_util import is_last_edu_in_sent
 
 # debugging 
 print_sents = True
@@ -55,10 +56,15 @@ class TreeInfo(object):
 		self._EDUS_table = ['']
 		self._sents = ['']
 		self._edu_to_sent_ind = [0]
-		self._edu_word_tag_table = [['']]
+		self._edu_tokenized_table = [['']]
+		self._edu_pos_tags_table = [['']]
 		self._EDU_head_set = [[]]
 		self._sent_tokenized_table = [['']]
-		self._sent_pos_tag_table = [['']]
+		self._sent_pos_tags_table = [['']]
+		self._edu_embed_table = [0]
+		self._EDUS_parse = [{}] # data from dependency parser
+		self._sents_parse = [{}] # data from dependency parser
+		self._edus_seg_in_sent = [(0,0)] # segment boundaries
 
 def preprocess(path, dis_files_dir, gen_dep=False, ser_files_dir='', bin_files_dir=''):
 	build_parser_action_to_ind_mapping()
@@ -73,24 +79,30 @@ def preprocess(path, dis_files_dir, gen_dep=False, ser_files_dir='', bin_files_d
 		with open(fn) as fh:
 			for edu in fh:
 				edu = edu.strip()
-				edu_tokenized = tokenize.word_tokenize(edu)
-				tree._edu_word_tag_table.append(nltk.pos_tag(edu_tokenized))
+				# edu = convert_edu(edu)
 				tree._EDUS_table.append(edu)
 
-	max_words_in_sent = gen_sentences(trees)
-	create_head_set_or_load_from_files(path, "head_set", trees, gen_dep)
+	gen_sentences(trees)
+	gen_and_load_dependency_parser(path, "dep_parse", trees, gen_dep)
 
-	return trees, max_words_in_sent
-
-def create_head_set_or_load_from_files(base_path, files_dir, trees, gen_dep):
-	if gen_dep:
-		head_set_from_dependency_parse(base_path, files_dir, trees)
-	else:
-		for tree in trees:
-			fn = build_infile_name(tree._fname, base_path, files_dir, ["hs"])
-			with open(fn) as fh:
-				for head_set in fh:
-					tree._EDU_head_set.append(head_set.split())
+	# workaround
+	# fixing tree._edu_word_tag_table
+	"""
+	for tree in trees:
+		last_ind = len(tree._edu_word_tag_table[1:])
+		for edu_ind in range(1, last_ind + 1):
+			last_edu_in_sent = edu_ind == last_ind or \
+			tree._edu_to_sent_ind[edu_ind] != tree._edu_to_sent_ind[edu_ind + 1]
+			 # [... ('Inc', 'NNP'), ('.', '.')] (see 0604) 
+			if not last_edu_in_sent:
+				if tree._edu_word_tag_table[edu_ind][-1][1] == ".":
+					w = tree._edu_word_tag_table[edu_ind][-2][0]
+					if w[0].isalnum():
+						tree._edu_word_tag_table[edu_ind].pop()
+						w, t = tree._edu_word_tag_table[edu_ind].pop()
+						tree._edu_word_tag_table[edu_ind].append((w + ".", t))
+	"""
+	return trees
 
 def binarize_files(base_path, dis_files_dir, bin_files_dir):
 	trees = []
@@ -227,36 +239,6 @@ def binarize_tree(node):
 	binarize_tree(l)
 	binarize_tree(r)
 
-def gen_sentences(trees):
-	max_sent_len = 0
-	for tree in trees:
-		sent_ind = 1
-		edus_in_sent = []
-		last_edu_in_sent = False
-		for edu_ind in range(1, len(tree._EDUS_table)):
-			edu = tree._EDUS_table[edu_ind]
-			tree._edu_to_sent_ind.append(sent_ind)
-			edus_in_sent.append(edu)
-			if edu_ind < len(tree._EDUS_table) - 1:
-				if edu[-1] == '.' or edu[-2:] == '."' or edu[-1] == "?" or edu[-1] == "!":
-					edu_next = tree._EDUS_table[edu_ind + 1]
-					if not edu_next[0].islower():
-						sent_ind += 1
-						last_edu_in_sent = True
-			else:
-				last_edu_in_sent = True
-
-			if last_edu_in_sent:
-				last_edu_in_sent = False
-				sent = ' '.join(edus_in_sent)
-				edus_in_sent = []
-				tree._sent_tokenized_table.append(tokenize.word_tokenize(sent))
-				words_in_sent = tree._sent_tokenized_table[-1]
-				tree._sent_pos_tag_table.append([tag for _, tag in nltk.pos_tag(words_in_sent)])
-				max_sent_len = max(max_sent_len, len(words_in_sent))
-
-	return max_sent_len
-
 # print tree in .dis format (called after binarization)
 
 def print_dis_file(ofh, node, level):
@@ -350,6 +332,31 @@ def gen_tree_stats(node, rel_freq):
 		gen_tree_stats(r, rel_freq)
 
 
+def gen_sentences(trees):
+    for tree in trees:
+        edus_in_sent = []
+        for edu_ind in range(1, len(tree._EDUS_table)):
+            edu = tree._EDUS_table[edu_ind]
+            edus_in_sent.append(edu)
+            if (is_last_edu_in_sent(tree, edu_ind)):
+                sent = ' '.join(edus_in_sent)
+                tree._sents.append(sent)
+                edus_in_sent = []
+
 def set_print_stat(flag=True):
 	global PRINT_STAT
 	PRINT_STAT = flag
+
+def convert_edu(edu):
+	pos = edu.find("? -")
+	if pos >= 0:
+		edu = edu[:pos] + edu[pos + 1:]
+	pos = edu.find("Corp. ")
+	if pos >= 0:
+		edu = edu[:pos + 4] + edu[pos + 5:]
+	pos = edu.find('?"')
+	if pos >= 0:
+		edu = edu[:pos] + edu[pos + 1:]
+	if edu[0].isdigit() and edu[1] == '.' and edu[2] == ' ' and edu[3].isupper():
+		edu = edu[:1] + edu[2:]
+	return edu
