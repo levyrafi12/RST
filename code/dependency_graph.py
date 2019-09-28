@@ -14,7 +14,7 @@ def gen_and_load_dependency_parser(base_path, files_dir, trees, force_gen=False)
 
 def gen_dependency_parser(base_path, files_dir, trees):
     """
-        call dependency parser and dump parser graphs to files
+        call dependency parser and dump parsing graphs to files
     """
     parser = CoreNLPDependencyParser()
 
@@ -24,14 +24,12 @@ def gen_dependency_parser(base_path, files_dir, trees):
         create_dir(base_path, files_dir)
 
     for tree in trees:
-        # print("gen dep parser {}".format(tree._fname))
         edus_in_sent = []
         edus_parse = []
         sents_parse = []
         for edu_ind in range(1, len(tree._EDUS_table)):
             edu = tree._EDUS_table[edu_ind]
             edus_parse.append(parse_text(parser, edu))
-            # print("edu {} {}".format(edu_ind, edus_parse[-1]))
             edus_in_sent.append(edu)
             if is_last_edu_in_sent(tree, edu_ind):
                 sent = ' '.join(edus_in_sent)
@@ -67,8 +65,6 @@ def load_dependency_parser(base_path, files_dir, trees):
         sent_ind = 1
 
         for sent_parse in tree._sents_parse[1:]:
-            # print("sent ind {} {}".format(sent_ind, tree._sents[sent_ind]))
-            # print("sent parse {}".format(sent_parse))
             sent_words = extract_parse_attr(sent_parse, 'word')
             tree._sent_tokenized_table.append(sent_words[1:])
             sent_pos_tags = extract_parse_attr(sent_parse, 'tag')
@@ -78,16 +74,13 @@ def load_dependency_parser(base_path, files_dir, trees):
             for edu_ind in range(first_edu_ind, n_edus):
                 tree._edu_to_sent_ind.append(sent_ind)
                 edu = tree._EDUS_table[edu_ind]
-                # print("sent ind {} edu ind {} {}".format(sent_ind, edu_ind, edu))
                 edu_parse = tree._EDUS_parse[edu_ind]
-                # print(edu_parse)
                 is_new_sent = edu_ind == first_edu_ind
                 l, h = set_edu_segment_in_sent(tree, sent_parse, edu_parse, is_new_sent)
-                # print("low {} high {} sent len {}".format(l, h, len(tree._sents_parse[sent_ind]) - 1))
                 set_edu_head_set(tree, sent_ind, edu_ind)
                 if is_last_edu_in_sent(tree, edu_ind):
                     assert tree._edus_seg_in_sent[-1][1] == len(sent_parse) - 1, \
-                        print("bad partition to edus in sent: end pos {}, len sent {}". \
+                        print("bad partition of sent to edus: end pos {}, len sent {}". \
                             format(tree._edus_seg_in_sent[-1][1], len(sent_parse) - 1))
                     first_edu_ind = edu_ind + 1
                     sent_ind += 1
@@ -113,18 +106,17 @@ def set_edu_segment_in_sent(tree, sent_parse, edu_parse, is_new_sent):
         Set edu segment boundaries in sentence
     """
 
-    # print(tree._fname)
-    start_ind = 1 # start scanning sent from position start ind
+    start_ind = 1 # scanning sent from position start ind
 
     if not is_new_sent:
         _, end_ind = tree._edus_seg_in_sent[-1] 
         start_ind = end_ind + 1
 
     ind_in_sent = start_ind
-    # print("ind_in_sent {} is new sent {}".format(start_ind, is_new_sent))
     n_tokens = len(edu_parse)
     edu_pos_tags = []
     edu_words = []
+
     for ind_in_edu in range(1, n_tokens):
         sent_node = sent_parse[ind_in_sent]
         edu_node = edu_parse[ind_in_edu]
@@ -139,26 +131,20 @@ def set_edu_segment_in_sent(tree, sent_parse, edu_parse, is_new_sent):
     tree._edus_seg_in_sent.append((start_ind, ind_in_sent - 1))
     tree._edu_tokenized_table.append(edu_words)
     tree._edu_pos_tags_table.append(edu_pos_tags)
-    # print("edu ind {} {} is now sent {}".format(len(tree._edu_tokenized_table[1:]), edu_words, is_new_sent))
+
     return start_ind, ind_in_sent - 1
 
 def extract_parse_attr(parse, attr):
-
     attr_tuples = [(elem[attr], elem['address']) for _, elem in parse.items()]
     sorted_attr_tuples = sorted(attr_tuples, key=lambda elem: elem[1])
     return [elem[0] for elem in sorted_attr_tuples]
 
 def combine_parse_data(to_parse, from_parse):
-    # print(to_parse)
-    # print(from_parse)
-
     dist = len(to_parse) - 1
-    # print(dist)
 
     del from_parse[0]
 
     n_keys = len(from_parse)
-    # print(n_keys)
 
     for key in range(1, n_keys + 1):
         to_parse[key + dist] = from_parse[key]

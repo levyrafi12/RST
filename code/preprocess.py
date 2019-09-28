@@ -16,6 +16,8 @@ from relations_inventory import build_parser_action_to_ind_mapping
 from dependency_graph import gen_and_load_dependency_parser
 from preprocess_util import is_last_edu_in_sent
 
+DEFAULT_TOKEN = 'transcend'
+
 # debugging 
 print_sents = True
 sents_dir = "sents"
@@ -53,15 +55,18 @@ class TreeInfo(object):
 	def __init__(self):
 		self._fname = '' # file name
 		self._root = ''
-		self._EDUS_table = ['']
+		self._EDUS_table = [DEFAULT_TOKEN]
 		self._sents = ['']
 		self._edu_to_sent_ind = [0]
-		self._edu_tokenized_table = [['']]
+		self._edu_tokenized_table = [[DEFAULT_TOKEN]]
 		self._edu_pos_tags_table = [['']]
 		self._EDU_head_set = [[]]
-		self._sent_tokenized_table = [['']]
+		self._sent_tokenized_table = [[DEFAULT_TOKEN]]
 		self._sent_pos_tags_table = [['']]
-		self._edu_embed_table = [0]
+		# inputs of the EDUS seq encoder.
+		self._edu_represent_table = [0] # EDU representation table
+		# outputs of the EDUS seq encoder
+		self._encoded_edu_table = [0]
 		self._EDUS_parse = [{}] # data from dependency parser
 		self._sents_parse = [{}] # data from dependency parser
 		self._edus_seg_in_sent = [(0,0)] # segment boundaries
@@ -85,23 +90,6 @@ def preprocess(path, dis_files_dir, gen_dep=False, ser_files_dir='', bin_files_d
 	gen_sentences(trees)
 	gen_and_load_dependency_parser(path, "dep_parse", trees, gen_dep)
 
-	# workaround
-	# fixing tree._edu_word_tag_table
-	"""
-	for tree in trees:
-		last_ind = len(tree._edu_word_tag_table[1:])
-		for edu_ind in range(1, last_ind + 1):
-			last_edu_in_sent = edu_ind == last_ind or \
-			tree._edu_to_sent_ind[edu_ind] != tree._edu_to_sent_ind[edu_ind + 1]
-			 # [... ('Inc', 'NNP'), ('.', '.')] (see 0604) 
-			if not last_edu_in_sent:
-				if tree._edu_word_tag_table[edu_ind][-1][1] == ".":
-					w = tree._edu_word_tag_table[edu_ind][-2][0]
-					if w[0].isalnum():
-						tree._edu_word_tag_table[edu_ind].pop()
-						w, t = tree._edu_word_tag_table[edu_ind].pop()
-						tree._edu_word_tag_table[edu_ind].append((w + ".", t))
-	"""
 	return trees
 
 def binarize_files(base_path, dis_files_dir, bin_files_dir):

@@ -5,14 +5,13 @@ from glove import loadWordVectors
 from relations_inventory import action_to_ind_map
 from preprocess import build_file_name
 from preprocess import SEP
+from preprocess import DEFAULT_TOKEN
 
 import re
 import glob
 import copy
 import numpy as np
 import os
-
-DEFAULT_TOKEN = ''
 
 class Vocab(object):
 	def __init__(self):
@@ -65,7 +64,7 @@ def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", \
 
 		# print("words in dictionary {}%".format(n_founds / len(vocab._tokens) * 100))
 
-	[tag_to_ind_map, _] = build_tags_dict(trees)
+	tag_to_ind_map = build_tags_dict(trees)
 
 	return [vocab, tag_to_ind_map]
 
@@ -117,16 +116,18 @@ def build_tags_dict(trees):
 
 	for tree in trees:
 		for tag_list in tree._edu_pos_tags_table[1:]:
-			for tag in tag_list:
-				if tag_to_ind_map.get(tag, None) == None:
-					tag_to_ind_map[tag] = tag_ind
-					tag_ind += 1
+			tag_ind = add_tag_list_to_dict(tag_list, tag_ind, tag_to_ind_map)
+		for tag_list in tree._sent_pos_tags_table[1:]:
+			tag_ind = add_tag_list_to_dict(tag_list, tag_ind, tag_to_ind_map)
 
-	ind_to_tag_map = [''] * len(tag_to_ind_map)	
-	for tag, ind in tag_to_ind_map.items():
-		ind_to_tag_map[ind] = tag
+	return tag_to_ind_map
 
-	return tag_to_ind_map, ind_to_tag_map
+def add_tag_list_to_dict(tag_list, tag_ind, tag_to_ind_map):
+	for tag in tag_list:
+		if tag_to_ind_map.get(tag, None) == None:
+			tag_to_ind_map[tag] = tag_ind
+			tag_ind += 1
+	return tag_ind
 
 def vocab_get(vocab, word, use_def_word=False, def_word=DEFAULT_TOKEN):
 	val = vocab._tokens.get(word.lower(), None)
