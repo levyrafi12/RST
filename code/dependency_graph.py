@@ -82,6 +82,7 @@ def load_dependency_parser(base_path, files_dir, trees):
                     assert tree._edus_seg_in_sent[-1][1] == len(sent_parse) - 1, \
                         print("bad partition of sent to edus: end pos {}, len sent {}". \
                             format(tree._edus_seg_in_sent[-1][1], len(sent_parse) - 1))
+                    tree._sent_to_first_edu_ind.append(first_edu_ind)
                     first_edu_ind = edu_ind + 1
                     sent_ind += 1
                     break

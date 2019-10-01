@@ -1,10 +1,6 @@
 import re
 import copy
-import filecmp
 import glob
-import nltk
-from nltk import tokenize
-from nltk import pos_tag
 from collections import defaultdict
 import os
 
@@ -17,6 +13,7 @@ from dependency_graph import gen_and_load_dependency_parser
 from preprocess_util import is_last_edu_in_sent
 
 DEFAULT_TOKEN = 'transcend'
+DEFAULT_TOKEN2 = 'immanent'
 
 # debugging 
 print_sents = True
@@ -51,6 +48,9 @@ class Node(object):
 		print("node: type= {} span = {},{} nuc={} rel={} text={}".\
 			format(node_type, beg, end, nuc, rel, text))
 
+	def get_span(self):
+		return self._span[0], self._span[1]
+
 class TreeInfo(object):
 	def __init__(self):
 		self._fname = '' # file name
@@ -58,6 +58,7 @@ class TreeInfo(object):
 		self._EDUS_table = [DEFAULT_TOKEN]
 		self._sents = ['']
 		self._edu_to_sent_ind = [0]
+		self._sent_to_first_edu_ind = [0]
 		self._edu_tokenized_table = [[DEFAULT_TOKEN]]
 		self._edu_pos_tags_table = [['']]
 		self._EDU_head_set = [[]]
@@ -208,7 +209,7 @@ def binarize_tree(node):
 
 		node._childs = []
 		while len(stack) > 2:
-			# print("deree > 2")
+			# print("degree > 2")
 			r = stack.pop(-1)
 			l = stack.pop(-1)
 

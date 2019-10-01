@@ -18,6 +18,7 @@ import sys
 class Sample(object):
 	def __init__(self):
 		self._state = [] # [v1, v2, v3] where v1 & v2 are the elements at the top of the stack
+		self._spans = []
 		self._action = ''
 		self._tree = ''
 
@@ -69,7 +70,7 @@ def gen_train_data_tree(node, stack, queue, samples):
 	sample = Sample()
 	if node._type == "leaf":
 		sample._action = "SHIFT"
-		sample._state = gen_state(stack, queue)
+		sample._state, sample._spans = gen_state(stack, queue)
 		assert(queue.pop(-1) == node._span[0])
 		stack.append(node)
 	else:
@@ -81,7 +82,7 @@ def gen_train_data_tree(node, stack, queue, samples):
 		else:
 			sample._action = gen_action(node, l)
 	
-		sample._state = gen_state(stack, queue)
+		sample._state, sample._spans = gen_state(stack, queue)
 		assert(stack.pop(-1) == node._childs[1])
 		assert(stack.pop(-1) == node._childs[0])
 		stack.append(node)
@@ -102,15 +103,19 @@ def gen_state(stack, queue):
 	ind1 = 0
 	ind2 = 0
 	ind3 = 0;
+	sp1 = 0,0 # span
+	sp2 = 0,0
+	sp3 = 0,0
 	if len(queue) > 0:
 		ind3 = queue[-1]
-
+		sp3 = queue[-1], queue[-1]
 	if len(stack) > 0:
 		ind1 = get_nuclear_edu_ind(stack[-1]) # right son
+		sp1 = stack[-1].get_span()
 		if len(stack) > 1:
 			ind2 = get_nuclear_edu_ind(stack[-2]) # left son
-
-	return [ind1, ind2, ind3]
+			sp2 = stack[-2].get_span()
+	return [ind1, ind2, ind3], [sp1, sp2, sp3]
 
 def get_nuclear_edu_ind(node):
 	if node._type == "leaf":
@@ -120,3 +125,5 @@ def get_nuclear_edu_ind(node):
 	if l._nuclearity == "Nucleus":
 		return get_nuclear_edu_ind(l)
 	return get_nuclear_edu_ind(r)
+
+

@@ -6,6 +6,7 @@ from relations_inventory import action_to_ind_map
 from preprocess import build_file_name
 from preprocess import SEP
 from preprocess import DEFAULT_TOKEN
+from preprocess import DEFAULT_TOKEN2
 
 import re
 import glob
@@ -13,9 +14,11 @@ import copy
 import numpy as np
 import os
 
+DEFAULT_TAG = ''
+
 class Vocab(object):
 	def __init__(self):
-		self._tokens = { DEFAULT_TOKEN: 0} 
+		self._tokens = { DEFAULT_TOKEN: 0, DEFAULT_TOKEN2 : 1} 
 		self._wordVectors = []
 
 	def len(self):
@@ -25,7 +28,7 @@ def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", \
 	glove_dim=50, print_vocab=False):
 	vocab = Vocab()
 
-	word_ind = 1
+	word_ind = 2
 	for tree in trees:
 		for word_list in tree._edu_tokenized_table[1:]:
 			for word in word_list:
@@ -111,7 +114,7 @@ def get_tag_ind(tag_to_ind_map, tag, use_def_tag=False):
 	return tag_to_ind_map[tag]
 
 def build_tags_dict(trees):
-	tag_to_ind_map = {'': 0}
+	tag_to_ind_map = {DEFAULT_TAG: 0}
 	tag_ind = 1
 
 	for tree in trees:
