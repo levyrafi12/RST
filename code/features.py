@@ -72,7 +72,6 @@ def add_features_per_sample(sample, vocab, tag_to_ind_map, use_def=False, \
 	tags_edus = []
 	head_set_edus = []
 	tree = sample._tree
-	# print("state {} ".format(sample._state))
 	for i in range(len(sample._state)):
 		edu_ind = sample._state[i]
 		if edu_ind > 0:

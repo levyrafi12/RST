@@ -70,8 +70,8 @@ if __name__ == '__main__':
 	model = '' # model data structure
 	if not baseline:
 		print("training [{}]".format(datetime.datetime.now()))
-		[samples, y_all, sents, pos_tags] = gen_train_data(trees, WORK_DIR)
-		model = train_model(model_name, trees, samples, sents, pos_tags, vocab, tag_to_ind_map, gen_dep)
+		[samples, y_all] = gen_train_data(trees, WORK_DIR)
+		model = train_model(model_name, trees, samples, vocab, tag_to_ind_map, gen_dep)
 
 	print("evaluate [{}]".format(datetime.datetime.now()))
 	evaluate(model, vocab, tag_to_ind_map, gen_dep, baseline, k_top)

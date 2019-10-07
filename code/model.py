@@ -24,14 +24,14 @@ from sequence import sequence_model
 import sklearn
 import math
 
-def train_model(model_name, trees, samples, sents, pos_tags, vocab, tag_to_ind_map, gen_dep):
+def train_model(model_name, trees, samples, vocab, tag_to_ind_map, gen_dep):
 	model = Model(model_name)
 	if model_name == "neural":
 		neural_network_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep)
 	elif model_name == "dplp":
 		dplp_model(model, trees, samples, vocab, tag_to_ind_map)
 	elif model_name == "seq":
-		sequence_model(model, trees, samples, sents, pos_tags, vocab, tag_to_ind_map)
+		sequence_model(model, samples, vocab, tag_to_ind_map, gen_dep)
 	else:
 		linear_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep)
 	return model
@@ -91,7 +91,7 @@ def neural_network_model(model, trees, samples, vocab, tag_to_ind_map, \
 			# A two dimension array of size num samples * num of actions
 			scores = net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
 			# indices[i] is the predicted action (ind) of sample i 
-			indices = scores.max(1)[1] # dim=1 refers to rows, size = subset_size (batch size)
+			indices = scores.max(1)[1] # dim=1 refers to rows, size(indices) = subset_size
 			loss = criterion(scores, Variable(torch.tensor(y_labels, dtype=torch.long)))
 			loss.backward()
 			optimizer.step()

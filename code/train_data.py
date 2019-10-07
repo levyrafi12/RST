@@ -16,11 +16,12 @@ import numpy as np
 import sys
 
 class Sample(object):
-	def __init__(self):
+	def __init__(self, tree):
 		self._state = [] # [v1, v2, v3] where v1 & v2 are the elements at the top of the stack
-		self._spans = []
+		self._spans = [] # [[s1,t1],[s2,t2],[s3,t3]] 
 		self._action = ''
-		self._tree = ''
+		self._tree = tree
+		self._sents_spans = []
 
 	def print_info(self):
 		print("sample {} {}".format(self._state, self._action))
@@ -40,7 +41,7 @@ def gen_train_data(trees, path, print_data=False):
 			queue.append(j + 1)
 
 		queue = queue[::-1]
-		gen_train_data_tree(root, stack, queue, tree_samples)
+		gen_train_data_tree(tree, root, stack, queue, tree_samples)
 		tree._samples = copy.copy(tree_samples)
 
 		if print_data:
@@ -50,39 +51,34 @@ def gen_train_data(trees, path, print_data=False):
 			with open(outfn, "w") as ofh:
 				for sample in tree_samples:
 					ofh.write("{} {}\n".format(sample._state, sample._action))
-		
-		for sample in tree_samples:
-			sample._tree = tree
+
+	for tree in trees:
+		for sample in tree._samples:
 			samples.append(sample)
-
-		for sent in tree._sent_tokenized_table[1:]:
-			sents.append(sent)
-		for pos_tag in tree._sent_pos_tags_table[1:]:
-			pos_tags.append(pos_tag)
-
+			
 	y_all = [action_to_ind_map[samples[i]._action] for i in range(len(samples))]
 	y_all = np.unique(y_all)
 
-	return [samples, y_all, sents, pos_tags]
+	return [samples, y_all]
 					
-def gen_train_data_tree(node, stack, queue, samples):
+def gen_train_data_tree(tree, node, stack, queue, samples):
 	# node.print_info()
-	sample = Sample()
+	sample = Sample(tree)
 	if node._type == "leaf":
 		sample._action = "SHIFT"
-		sample._state, sample._spans = gen_state(stack, queue)
+		sample._state, sample._spans, sample._sents_spans = gen_state(tree, stack, queue)
 		assert(queue.pop(-1) == node._span[0])
 		stack.append(node)
 	else:
 		[l, r] = node._childs
-		gen_train_data_tree(l, stack, queue, samples)
-		gen_train_data_tree(r, stack, queue, samples)
+		gen_train_data_tree(tree, l, stack, queue, samples)
+		gen_train_data_tree(tree, r, stack, queue, samples)
 		if r._nuclearity == "Satellite":
 			sample._action = gen_action(node, r)
 		else:
 			sample._action = gen_action(node, l)
 	
-		sample._state, sample._spans = gen_state(stack, queue)
+		sample._state, sample._spans, sample._sents_spans = gen_state(tree, stack, queue)
 		assert(stack.pop(-1) == node._childs[1])
 		assert(stack.pop(-1) == node._childs[0])
 		stack.append(node)
@@ -99,23 +95,24 @@ def gen_action(parent, child):
 	action += map_to_cluster(child._relation)
 	return action
 		
-def gen_state(stack, queue):
-	ind1 = 0
-	ind2 = 0
-	ind3 = 0;
-	sp1 = 0,0 # span
-	sp2 = 0,0
-	sp3 = 0,0
+def gen_state(tree, stack, queue):
+	edus_idx = [0, 0, 0]
+	edus_spans = [(0,0)] * 3
+	sents_spans = [(0,0)] * 3
 	if len(queue) > 0:
-		ind3 = queue[-1]
-		sp3 = queue[-1], queue[-1]
-	if len(stack) > 0:
-		ind1 = get_nuclear_edu_ind(stack[-1]) # right son
-		sp1 = stack[-1].get_span()
-		if len(stack) > 1:
-			ind2 = get_nuclear_edu_ind(stack[-2]) # left son
-			sp2 = stack[-2].get_span()
-	return [ind1, ind2, ind3], [sp1, sp2, sp3]
+		edus_idx[2] = queue[-1]
+		edus_spans[2] = queue[-1], queue[-1]
+		sent_ind = tree._edu_to_sent_ind[queue[-1]]
+		sents_spans[2] = sent_ind, sent_ind
+
+	depth = min(len(stack), 2)
+	for i in range(1, depth + 1):
+		edus_idx[i - 1] = get_nuclear_edu_ind(stack[-i]) 
+		s, t = stack[-i].get_span()
+		edus_spans[i - 1] = s, t
+		sents_spans[i - 1] = tree._edu_to_sent_ind[s], tree._edu_to_sent_ind[t]
+
+	return edus_idx, edus_spans, sents_spans
 
 def get_nuclear_edu_ind(node):
 	if node._type == "leaf":

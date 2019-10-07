@@ -1,5 +1,6 @@
 import glob
 import os
+import psutil
 
 SEP = os.sep
 
@@ -49,3 +50,8 @@ def remove_dir(base_path, dir):
 		for fn in glob.glob(path_to_files):
 			os.remove(fn)
 		os.rmdir(path)
+
+def print_memory_usage(msg=''):
+	mem = psutil.virtual_memory()
+	print("{} memory available {} MB , mem used {} MB".format(\
+		msg, int(mem[1] / 10 ** 6), int(mem[3] / 10 ** 6)))

@@ -12,7 +12,6 @@ from preprocess import print_serial_file
 from preprocess import extract_base_name_file
 from preprocess import preprocess
 from evaluation import eval
-from features import add_features_per_sample
 from train_data import Sample
 from train_data import gen_state
 from predict import predict
@@ -215,15 +214,11 @@ def next_move(parsers_queue, parser, model, tree, vocab, tag_to_ind_map, \
 		if parser.ended() or baseline:
 			return
 
-	sample = Sample()
-	sample._state = gen_config(parser._buffer, parser._stack, parser._leaf_ind)
-	sample._tree = tree
+	sample = gen_config(tree, parser._buffer, parser._stack, parser._leaf_ind)
 
 	# sample.print_info()
 
-	_, x_vecs = add_features_per_sample(sample, vocab, tag_to_ind_map, \
-		True, is_bag_of_words(model._name), is_basic_feat(model._name), \
-		get_word_encoding(model._name))
+	x_vecs = model.extract_input_vec(sample, vocab, tag_to_ind_map)
 
 	# print("next move")
 	scores, sorted_scores, sorted_actions = predict(model, x_vecs)
@@ -270,12 +265,14 @@ def next_move(parsers_queue, parser, model, tree, vocab, tag_to_ind_map, \
 			parsers_queue.back()._level))
 		"""
 
-def gen_config(queue, stack, top_ind_in_queue):
+def gen_config(tree, queue, stack, top_ind_in_queue):
+	sample = Sample(tree)
 	q_temp = []
 	if queue.len() > 0: # queue contains element texts not indexes
 		q_temp.append(top_ind_in_queue)
 
-	return gen_state(stack._stack, q_temp)
+	sample._state, sample._spans, sample._sents_spans = gen_state(tree, stack._stack, q_temp)
+	return sample
 
 def gen_transition(action):
 	transition = Transition()

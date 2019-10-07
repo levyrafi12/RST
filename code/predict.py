@@ -19,7 +19,7 @@ import sklearn
 import math
 
 def predict(model, x_vecs):
-	if model._name == 'neural':
+	if model._name == 'neural' or model._name == 'seq':
 		return neural_net_predict(model, x_vecs) 
 	if model._name == 'dplp':
 		return dplp_predict(model, x_vecs)
