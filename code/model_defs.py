@@ -18,6 +18,8 @@ class Model(object):
 	def extract_input_vec(self, sample, vocab, tag_to_ind_map):
 		if self._name == 'seq':
 			encoder_forward(self._lstm1, self._lstm2, [sample], vocab, tag_to_ind_map, self._bs, True)
+			# print(len(sample._tree._encoded_edu_table))
+			# print("in eval sample spans {}".format(sample._spans))
 			return extract_edus_subtrees_hidden_repr_per_sample(sample, vocab)
 
 		_, x_vecs = add_features_per_sample(sample, vocab, tag_to_ind_map, True, 

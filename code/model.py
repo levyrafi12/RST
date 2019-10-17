@@ -89,13 +89,12 @@ def neural_network_model(model, trees, samples, vocab, tag_to_ind_map, \
 			trees, samples, vocab, subset_size, tag_to_ind_map):
 			optimizer.zero_grad() # zero the gradient buffers
 			# A two dimension array of size num samples * num of actions
-			scores = net(Variable(torch.tensor(x_vecs, dtype=torch.float)))
+			scores = net(torch.tensor(x_vecs, dtype=torch.float))
 			# indices[i] is the predicted action (ind) of sample i 
 			indices = scores.max(1)[1] # dim=1 refers to rows, size(indices) = subset_size
-			loss = criterion(scores, Variable(torch.tensor(y_labels, dtype=torch.long)))
+			loss = criterion(scores,torch.tensor(y_labels, dtype=torch.long))
 			loss.backward()
 			optimizer.step()
-
 			n_match += np.sum([indices[j] == y_labels[j] for j in range(len(indices))])
 		if epoch % print_every == 0:
 			print("epoch {0} num matches = {1:.3f}% loss {2:.3f}".\

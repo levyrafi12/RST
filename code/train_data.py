@@ -15,10 +15,21 @@ import numpy as np
 
 import sys
 
+class edu_represent(object):
+	def _init__(self, edu_represnt):
+		self._edu_represent_data = ''
+		self._words_hidden_state = ''
+
+class rst_subtree(object):
+	def __init__(self, rst_subtree):
+		self._edus_represent_span = [0]
+		self._edus_hidden_state_span = [0]
+
 class Sample(object):
 	def __init__(self, tree):
 		self._state = [] # [v1, v2, v3] where v1 & v2 are the elements at the top of the stack
-		self._spans = [] # [[s1,t1],[s2,t2],[s3,t3]] 
+		self._spans = [] # [[s1,t1],[s2,t2],[s3,t3]]
+		self._rst_subtrees = []
 		self._action = ''
 		self._tree = tree
 		self._sents_spans = []
@@ -42,7 +53,7 @@ def gen_train_data(trees, path, print_data=False):
 
 		queue = queue[::-1]
 		gen_train_data_tree(tree, root, stack, queue, tree_samples)
-		tree._samples = copy.copy(tree_samples)
+		tree._samples = tree_samples
 
 		if print_data:
 			outfn = path

@@ -26,6 +26,7 @@ def extract_features(trees, samples, vocab, subset_size, tag_to_ind_map, \
 	y_labels = []
 
 	rand_samples = np.arange(len(samples))
+	np.random.seed(1)
 	np.random.shuffle(rand_samples)
 
 	for i in range(subset_size):
@@ -46,6 +47,7 @@ def extract_features_next_subset(trees, samples, vocab, subset_size, tag_to_ind_
 	y_labels = []
 
 	rand_samples = np.arange(len(samples))
+	np.random.seed(1)
 	np.random.shuffle(rand_samples)
 
 	for i in range(1, n_samples + 1):
