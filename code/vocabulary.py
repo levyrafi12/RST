@@ -24,20 +24,26 @@ class Vocab(object):
 	def len(self):
 		return len(self._tokens)
 		
-def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", \
+def gen_vocabulary(trees, base_path, lemmatize, files_dir="TRAINING", glove_dir="glove", \
 	glove_dim=50, print_vocab=False):
 	vocab = Vocab()
 
 	word_ind = 2
 	for tree in trees:
-		for word_list in tree._edu_tokenized_table[1:]:
-			for word in word_list:
+		if lemmatize == True:
+			edus = tree._edu_lem_tokenized_table[1:]
+			sents = tree._sent_lem_tokenized_table[1:]
+		else:
+			edus = tree._edu_tokenized_table[1:]
+			sents = tree._sent_tokenized_table[1:]
+		for edu in edus:
+			for word in edu:
 				if not vocab._tokens.get(word.lower()):
 					vocab_set(vocab, word, word_ind)
 					word_ind += 1
 		# tokenizing the sentence may slightly produce different results 
 		# than tokenizing the EDUS of the sentence.
-		for sent in tree._sent_tokenized_table[1:]:
+		for sent in sents:
 			for word in sent:
 				if not vocab._tokens.get(word.lower()):
 					vocab_set(vocab, word, word_ind)
@@ -71,7 +77,9 @@ def gen_vocabulary(trees, base_path, files_dir="TRAINING", glove_dir="glove", \
 
 	return [vocab, tag_to_ind_map]
 
-def split_edu_to_tokens(tree, edu_ind):
+def split_edu_to_tokens(tree, edu_ind, lemmatize=False):
+	if lemmatize == True:
+		return tree._edu_lem_tokenized_table[edu_ind]
 	return tree._edu_tokenized_table[edu_ind]
 
 def split_edu_to_tags(tree, edu_ind):

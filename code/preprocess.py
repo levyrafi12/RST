@@ -12,6 +12,7 @@ from relations_inventory import build_parser_action_to_ind_mapping
 from dependency_graph import gen_and_load_dependency_parser
 from preprocess_util import is_last_edu_in_sent
 
+# out of vocabulary words
 DEFAULT_TOKEN = 'transcend'
 DEFAULT_TOKEN2 = 'immanent'
 
@@ -60,9 +61,11 @@ class TreeInfo(object):
 		self._edu_to_sent_ind = [0]
 		self._sent_to_first_edu_ind = [0]
 		self._edu_tokenized_table = [[DEFAULT_TOKEN]]
+		self._edu_lem_tokenized_table = [[DEFAULT_TOKEN]] # lemmatized words
 		self._edu_pos_tags_table = [['']]
 		self._EDU_head_set = [[]]
 		self._sent_tokenized_table = [[DEFAULT_TOKEN]]
+		self._sent_lem_tokenized_table = [[DEFAULT_TOKEN]] # lemmatized words
 		self._sent_pos_tags_table = [['']]
 		# inputs of the EDUS seq encoder.
 		self._edu_represent_table = [0] # EDU representation table

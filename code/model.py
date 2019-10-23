@@ -38,7 +38,6 @@ def train_model(model_name, trees, samples, vocab, tag_to_ind_map, gen_dep):
 
 hidden_size = 128
 lr = 1e-4 # learning rate
-momentum = 0.9
 
 class Network(nn.Module):
     def __init__(self, n_features, hidden_size, num_classes):

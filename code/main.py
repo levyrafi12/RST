@@ -64,7 +64,8 @@ if __name__ == '__main__':
 	if print_stats:
 		print_trees_stats(trees)
 
-	[vocab, tag_to_ind_map] = gen_vocabulary(trees, WORK_DIR, TRAINING_DIR, GLOVE_DIR, \
+	lemmatize = model_name == 'seq'
+	[vocab, tag_to_ind_map] = gen_vocabulary(trees, WORK_DIR, lemmatize, TRAINING_DIR, GLOVE_DIR, \
 		glove_dim)
 
 	model = '' # model data structure

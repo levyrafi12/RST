@@ -67,6 +67,8 @@ def load_dependency_parser(base_path, files_dir, trees):
         for sent_parse in tree._sents_parse[1:]:
             sent_words = extract_parse_attr(sent_parse, 'word')
             tree._sent_tokenized_table.append(sent_words[1:])
+            sent_lem_words = extract_parse_attr(sent_parse, 'lemma')
+            tree._sent_lem_tokenized_table.append(sent_lem_words[1:])
             sent_pos_tags = extract_parse_attr(sent_parse, 'tag')
             tree._sent_pos_tags_table.append(sent_pos_tags[1:])
             assert first_edu_ind < n_edus, print("too few edus")

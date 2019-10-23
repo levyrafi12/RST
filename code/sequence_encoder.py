@@ -4,7 +4,9 @@ from sequence_features import prepare_sents_as_inp_vecs_next
 from sequence_features import prepare_edus_seq_as_inp_vecs
 from general import print_memory_usage
 
-def encoder_forward(lstm1, lstm2, samples, vocab, tag_to_ind_map, bs, use_def=False, hidden_size=200):
+def encoder_forward(lstm1, lstm2, samples, vocab, tag_to_ind_map, bs, dropout_prob, train=True, \
+	hidden_size=200):
+	use_def = not train
 	# Return a list of tensors where each represents a sequence of words 
 	# inside a sentence, and has a shape of sent_len * vectorized concatenated word tag len
 	# Tensors are sorted in reversal order by the number of their rows (sent_len)
@@ -12,8 +14,10 @@ def encoder_forward(lstm1, lstm2, samples, vocab, tag_to_ind_map, bs, use_def=Fa
 	for x_vecs, batch_to_sent_ind, batch_to_tree in prepare_sents_as_inp_vecs_next(\
 		samples, vocab, tag_to_ind_map, use_def, bs):
 		# Return one tensor of dimenion bs * max_sent_len * hidden_size
-		# hidden = (torch.randn(2, bs, hidden_size), torch.randn(2, bs, hidden_size))
-		encoded_words, _ = lstm1(x_vecs)
+		states = (torch.randn(2, len(x_vecs), hidden_size), torch.randn(2, len(x_vecs), hidden_size))
+		states = detach(states)
+		encoded_words, _ = lstm1(x_vecs, states)
+		encoded_words = nn.functional.dropout(encoded_words, p=dropout_prob, training=train)
 		# Based on the encoded words, the outputs of the LSTM, the edus representations are calculated. 
 		calc_edus_representations(vocab, encoded_words, batch_to_sent_ind, batch_to_tree)
 
@@ -21,8 +25,10 @@ def encoder_forward(lstm1, lstm2, samples, vocab, tag_to_ind_map, bs, use_def=Fa
 	# Return a tensor of dimension bs * max edus seq len * (2*hidden_size)
 	for x_vecs, batch_to_tree, batch_to_span in prepare_edus_seq_as_inp_vecs(\
 		samples, vocab, tag_to_ind_map, bs):
-		hidden = (torch.randn(2, bs, hidden_size), torch.randn(2, bs, hidden_size))
-		encoded_edus, _ = lstm2(x_vecs)
+		states = (torch.randn(2, len(x_vecs), hidden_size), torch.randn(2, len(x_vecs), hidden_size))
+		states = detach(states)
+		encoded_edus, _ = lstm2(x_vecs, states)
+		encoded_edus = nn.functional.dropout(encoded_edus, p=dropout_prob, training=train)
 		set_encoded_edus(encoded_edus, batch_to_tree, batch_to_span)
 
 def calc_edus_representations(vocab, encoded_words, batch_to_sent_ind, batch_to_tree):
@@ -58,3 +64,6 @@ def set_encoded_edus(encoded_edus, batch_to_tree, batch_to_span):
 			tree._encoded_edu_table += [0] * (len(tree._EDUS_table) - 1)
 		for k in range(s, t + 1):
 			tree._encoded_edu_table[k] = encoded_edus[i, k - s, :]
+
+def detach(states):
+	return [state.detach() for state in states]

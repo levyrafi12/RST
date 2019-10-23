@@ -16,14 +16,14 @@ import numpy as np
 import sys
 
 class edu_represent(object):
-	def _init__(self, edu_represnt):
-		self._edu_represent_data = ''
-		self._words_hidden_state = ''
+	def __init__(self):
+		self._edu_reprent_data = ''
+		self._words_hidden_states = ''
 
 class rst_subtree(object):
 	def __init__(self, rst_subtree):
 		self._edus_represent_span = [0]
-		self._edus_hidden_state_span = [0]
+		self._edus_hidden_states_span = [0]
 
 class Sample(object):
 	def __init__(self, tree):

@@ -30,7 +30,6 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         # self.dropout = nn.Dropout(p=dropout_prob)
         self.fc1 = nn.Linear(n_features, num_classes)
-        np.random.seed(1)
         nn.init.normal_(self.fc1.weight.data)
         self.fc1.weight.data *= np.sqrt(2 / n_features)
         self.fc1.bias.data.fill_(0.0)
@@ -68,29 +67,27 @@ def sequence_model(model, samples, vocab, tag_to_ind_map, gen_dep):
 	optimizer = optim.Adam(decoder.parameters(), lr=lr, weight_decay=l2_regul)
 	print(optimizer)
 
+	optims = [optimizer, lstm1_opt, lstm2_opt]
+	models = [decoder, lstm1, lstm2]
+
 	print_memory_usage()
 	n_match = 0
 
 	for epoch in range(1, n_epoch + 1):
 		i = 1
 		for samples_subset in get_samples_subset_next(samples, decoder_bs):
-			encoder_forward(lstm1, lstm2, samples_subset, vocab, tag_to_ind_map, encoder_bs)
+			encoder_forward(lstm1, lstm2, samples_subset, vocab, tag_to_ind_map, encoder_bs, \
+				dropout_prob)
 			x_vecs, y_labels = extract_edus_subtrees_hidden_repr(samples_subset, vocab)
-			optimizer.zero_grad() # zero the gradient buffers
-			lstm1_opt.zero_grad()
-			lstm2_opt.zero_grad()
+			clear_grads(optims) # zero the gradient buffers
 			scores = decoder(x_vecs) 
 			# indices[i] is the predicted action ind of sample i 
 			indices = scores.max(1)[1] # dim=1 refers to rows, size(indices)=batch size
 			loss = criterion(scores, y_labels)
 			# check_grad(samples_subset)
 			loss.backward()
-			optimizer.step()
-			lstm1_opt.step()
-			lstm2_opt.step()
-			clip_grad_norm_(decoder.parameters(), grad_clip)
-			clip_grad_norm_(lstm1.parameters(), grad_clip)
-			clip_grad_norm_(lstm2.parameters(), grad_clip)
+			update_grads(optims) # call step
+			clip_grads(models, grad_clip)
 			if i % 50 == 0:
 				print(i)
 				# print("dec inp {} {}".format(x_vecs.is_leaf, x_vecs.grad_fn))
@@ -123,3 +120,15 @@ def check_grad(samples):
 			for k in range(s, t + 1):
 				if not sample._tree._encoded_edu_table[k].grad:
 					print("hello2")
+
+def clear_grads(optims):
+	for opt in optims:
+		opt.zero_grad() 
+
+def update_grads(optims):
+	for opt in optims:
+		opt.step()
+
+def clip_grads(models, val):
+	for m in models:
+		clip_grad_norm_(m.parameters(), val)		

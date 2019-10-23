@@ -14,9 +14,7 @@ from vocabulary import DEFAULT_TAG
 
 def get_samples_subset_next(samples, batch_size):
 	n_samples = len(samples)
-	rand_samples = np.arange(n_samples)
-	np.random.seed(1)
-	np.random.shuffle(rand_samples)
+	rand_samples = np.random.permutation(n_samples)
 	samples_subset = []
 
 	for i in range(1, len(samples) + 1):
@@ -39,8 +37,10 @@ def prepare_sents_as_inp_vecs_next(samples, vocab, tag_to_ind_map, use_def=False
 
 	for sample in samples:
 		for s, t in sample._sents_spans:
-			for k in range(s, t + 1):
-				words = sample._tree._sent_tokenized_table[k]
+			rand_sent_idx = np.arange(s, t + 1)
+			np.random.shuffle(rand_sent_idx)
+			for k in rand_sent_idx:
+				words = sample._tree._sent_lem_tokenized_table[k]
 				# print(' '.join(words))
 				tags = sample._tree._sent_pos_tags_table[k]
 				vect_words = gen_vectorized_words(words, vocab, use_def)
@@ -120,7 +120,7 @@ def gen_vectorized_tags(pos_tags, tag_to_ind_map, use_def=False):
 	return vecs
 
 def len_of_vectorized_word_tag(tree, vocab, tag_to_ind_map):
-	word = tree._sent_tokenized_table[1][0]
+	word = tree._sent_lem_tokenized_table[1][0]
 	tag = tree._sent_pos_tags_table[1][0]
 	[word_vec] = gen_vectorized_words([word], vocab)
 	[tag_vec] = gen_vectorized_tags([tag], tag_to_ind_map)
