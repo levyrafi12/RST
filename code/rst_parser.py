@@ -214,7 +214,7 @@ def next_move(parsers_queue, parser, model, tree, vocab, tag_to_ind_map, \
 		if parser.ended() or baseline:
 			return
 
-	sample = gen_config(tree, parser._buffer, parser._stack, parser._leaf_ind)
+	sample = gen_config(tree, parser._buffer, parser._stack, parser._leaf_ind, model)
 
 	# sample.print_info()
 
@@ -265,13 +265,14 @@ def next_move(parsers_queue, parser, model, tree, vocab, tag_to_ind_map, \
 			parsers_queue.back()._level))
 		"""
 
-def gen_config(tree, queue, stack, top_ind_in_queue):
+def gen_config(tree, queue, stack, top_ind_in_queue, model):
 	sample = Sample(tree)
 	q_temp = []
 	if queue.len() > 0: # queue contains element texts not indexes
 		q_temp.append(top_ind_in_queue)
 
-	sample._state, sample._spans, sample._sents_spans = gen_state(tree, stack._stack, q_temp)
+	sample._state, sample._spans, sample._sents_spans = gen_state(tree, stack._stack, q_temp, \
+		model._stack_depth)
 	return sample
 
 def gen_transition(action):

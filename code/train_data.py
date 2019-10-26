@@ -37,7 +37,7 @@ class Sample(object):
 	def print_info(self):
 		print("sample {} {}".format(self._state, self._action))
 
-def gen_train_data(trees, path, print_data=False):
+def gen_train_data(trees, model, path, print_data=False):
 	samples = []
 	sents = []
 	pos_tags = []
@@ -52,7 +52,7 @@ def gen_train_data(trees, path, print_data=False):
 			queue.append(j + 1)
 
 		queue = queue[::-1]
-		gen_train_data_tree(tree, root, stack, queue, tree_samples)
+		gen_train_data_tree(tree, root, stack, queue, tree_samples, model._stack_depth)
 		tree._samples = tree_samples
 
 		if print_data:
@@ -72,24 +72,26 @@ def gen_train_data(trees, path, print_data=False):
 
 	return [samples, y_all]
 					
-def gen_train_data_tree(tree, node, stack, queue, samples):
+def gen_train_data_tree(tree, node, stack, queue, samples, stack_depth):
 	# node.print_info()
 	sample = Sample(tree)
 	if node._type == "leaf":
 		sample._action = "SHIFT"
-		sample._state, sample._spans, sample._sents_spans = gen_state(tree, stack, queue)
+		sample._state, sample._spans, sample._sents_spans = \
+			gen_state(tree, stack, queue, stack_depth)
 		assert(queue.pop(-1) == node._span[0])
 		stack.append(node)
 	else:
 		[l, r] = node._childs
-		gen_train_data_tree(tree, l, stack, queue, samples)
-		gen_train_data_tree(tree, r, stack, queue, samples)
+		gen_train_data_tree(tree, l, stack, queue, samples, stack_depth)
+		gen_train_data_tree(tree, r, stack, queue, samples, stack_depth)
 		if r._nuclearity == "Satellite":
 			sample._action = gen_action(node, r)
 		else:
 			sample._action = gen_action(node, l)
 	
-		sample._state, sample._spans, sample._sents_spans = gen_state(tree, stack, queue)
+		sample._state, sample._spans, sample._sents_spans = \
+			gen_state(tree, stack, queue, stack_depth)
 		assert(stack.pop(-1) == node._childs[1])
 		assert(stack.pop(-1) == node._childs[0])
 		stack.append(node)
@@ -106,20 +108,24 @@ def gen_action(parent, child):
 	action += map_to_cluster(child._relation)
 	return action
 		
-def gen_state(tree, stack, queue):
-	edus_idx = [0, 0, 0]
-	edus_spans = [(0,0)] * 3
-	sents_spans = [(0,0)] * 3
+def gen_state(tree, stack, queue, depth):
+	"""
+		Generate the state of the queue and the stack
+		Parameters: depth is the stack depth
+	"""
+	edus_idx = [0] * (depth + 1)
+	edus_spans = [(0,0)] * (depth + 1)
+	sents_spans = [(0,0)] * (depth + 1)
 	if len(queue) > 0:
-		edus_idx[2] = queue[-1]
-		edus_spans[2] = queue[-1], queue[-1]
+		edus_idx[depth] = queue[-1]
+		edus_spans[depth] = queue[-1], queue[-1]
 		sent_ind = tree._edu_to_sent_ind[queue[-1]]
-		sents_spans[2] = sent_ind, sent_ind
+		sents_spans[depth] = sent_ind, sent_ind
 
-	depth = min(len(stack), 2)
-	for i in range(1, depth + 1):
+	act_depth = min(len(stack), depth) # actual depth
+	for i in range(1, act_depth + 1):
 		edus_idx[i - 1] = get_nuclear_edu_ind(stack[-i]) 
-		s, t = stack[-i].get_span()
+		s, t = stack[-i].get_span() # the span boundaries
 		edus_spans[i - 1] = s, t
 		sents_spans[i - 1] = tree._edu_to_sent_ind[s], tree._edu_to_sent_ind[t]
 

@@ -18,23 +18,20 @@ from features import project_features
 from relations_inventory import ind_to_action_map
 from rst_parser import evaluate
 from dplp import dplp_algo
-from model_defs import Model
 from sequence import sequence_model
 
 import sklearn
 import math
 
-def train_model(model_name, trees, samples, vocab, tag_to_ind_map, gen_dep):
-	model = Model(model_name)
-	if model_name == "neural":
+def train_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep):
+	if model._name == "neural":
 		neural_network_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep)
-	elif model_name == "dplp":
+	elif model._name == "dplp":
 		dplp_model(model, trees, samples, vocab, tag_to_ind_map)
-	elif model_name == "seq":
+	elif model._name == "seq":
 		sequence_model(model, samples, vocab, tag_to_ind_map, gen_dep)
 	else:
 		linear_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep)
-	return model
 
 hidden_size = 128
 lr = 1e-4 # learning rate

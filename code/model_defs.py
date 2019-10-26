@@ -12,6 +12,7 @@ class Model(object):
 		self._name = name
 		self._proj_mat = np.array([])
 		self._clf = None
+		self._stack_depth = 2
 
 	def is_proj_mat(self):
 		return len(self._proj_mat) > 0

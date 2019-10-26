@@ -17,8 +17,9 @@ def encoder_forward(lstm1, lstm2, samples, vocab, tag_to_ind_map, bs, dropout_pr
 		states = (torch.randn(2, len(x_vecs), hidden_size), torch.randn(2, len(x_vecs), hidden_size))
 		states = detach(states)
 		encoded_words, _ = lstm1(x_vecs, states)
+		# apply dropout in training only
 		encoded_words = nn.functional.dropout(encoded_words, p=dropout_prob, training=train)
-		# Based on the encoded words, the outputs of the LSTM, the edus representations are calculated. 
+		# Based on the encoded words (the outputs of the LSTM) the edus representations are calculated. 
 		calc_edus_representations(vocab, encoded_words, batch_to_sent_ind, batch_to_tree)
 
 	# Preprare input vectors for the second Bi-LSTM encoder

@@ -12,6 +12,7 @@ from features import get_word_encoding
 from relations_inventory import ind_to_action_map
 from features import project_features
 from model_defs import Model
+from general import print_memory_usage
 
 # from sklearn import svm
 from multiclass_svm import MulticlassSVM
@@ -19,8 +20,8 @@ from multiclass_svm import MulticlassSVM
 def dplp_algo(model, trees, samples, vocab, tag_to_ind_map, subset_size=500, print_every=10):
 	C = 1.0 # {1, 10, 50, 100}
 	# as tau becomes smaller the effect of A_prev is larger. No effect when tau = 1
-	tau = 1.0 # tau = { 1, 0.1, 0.01, 0.001} 
-	K = 30 # { 30, 60, 90, 150}
+	tau = 0.1 # tau = { 1, 0.1, 0.01, 0.001} 
+	K = 60 # { 30, 60, 90, 150}
 
 	subset_size = min(subset_size, len(samples))
 
@@ -36,11 +37,11 @@ def dplp_algo(model, trees, samples, vocab, tag_to_ind_map, subset_size=500, pri
 	A_t_1 =  np.random.uniform(0, 1, (K, len(x_vecs[0]))) # A(t - 1)
 
 	T = 200
-	eps = 0.001 
+	eps = 0.0001 
 	clf = MulticlassSVM(C=C, tol=0.01, max_iter=100, random_state=0, verbose=0)
 
 	for t in range(1, T + 1):
-		if t > 0 and t % print_every == 0:
+		if t % print_every == 0:
 			print("t {}".format(t))
 		[x_vecs, y_labels] = extract_features(trees, samples, vocab, subset_size, \
 			tag_to_ind_map, True, is_basic_feat(model._name), \
@@ -59,12 +60,9 @@ def dplp_algo(model, trees, samples, vocab, tag_to_ind_map, subset_size=500, pri
 		A_t_1 = A_t
 
 	[x_vecs, y_labels] = extract_features(trees, samples, vocab, \
-		subset_size, tag_to_ind_map, True,\
+		len(samples), tag_to_ind_map, True,\
 		is_basic_feat(model._name), get_word_encoding(model._name))
 	x_vecs = project_features(A_t, x_vecs)
-
-	clf.fit(x_vecs, y_labels)
-	# clf = svm.SVC(C=C, kernel='linear', decision_function_shape='ovr')
 	clf.fit(x_vecs, y_labels)
 	model._proj_mat = A_t
 	model._clf = clf

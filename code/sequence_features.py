@@ -64,7 +64,7 @@ def prepare_sents_as_inp_vecs_next(samples, vocab, tag_to_ind_map, use_def=False
 
 def prepare_edus_seq_as_inp_vecs(samples, vocab, tag_to_ind_map, bs=1):
 	tuples = [] # tuples of tree and seq_edus
-	n_spans = 3 * len(samples)
+	n_spans = len(samples[0]._spans) * len(samples)
 	i = 1
 
 	for sample in samples:

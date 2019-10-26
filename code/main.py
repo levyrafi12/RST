@@ -10,6 +10,7 @@ from rst_parser import evaluate
 from model import train_model
 from vocabulary import gen_vocabulary
 from preprocess import print_trees_stats
+from model_defs import Model
 from defs import *
 
 import datetime
@@ -64,15 +65,21 @@ if __name__ == '__main__':
 	if print_stats:
 		print_trees_stats(trees)
 
-	lemmatize = model_name == 'seq'
+	model = Model(model_name)
+	lemmatize = False
+
+	if model_name == 'seq':
+		model._stack_depth = 3
+		lemmatize = True
+
 	[vocab, tag_to_ind_map] = gen_vocabulary(trees, WORK_DIR, lemmatize, TRAINING_DIR, GLOVE_DIR, \
 		glove_dim)
 
-	model = '' # model data structure
 	if not baseline:
 		print("training [{}]".format(datetime.datetime.now()))
-		[samples, y_all] = gen_train_data(trees, WORK_DIR)
-		model = train_model(model_name, trees, samples, vocab, tag_to_ind_map, gen_dep)
+
+		[samples, y_all] = gen_train_data(trees, model, WORK_DIR)
+		train_model(model, trees, samples, vocab, tag_to_ind_map, gen_dep)
 
 	print("evaluate [{}]".format(datetime.datetime.now()))
 	evaluate(model, vocab, tag_to_ind_map, gen_dep, baseline, k_top)

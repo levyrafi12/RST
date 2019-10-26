@@ -119,6 +119,7 @@ def set_edu_segment_in_sent(tree, sent_parse, edu_parse, is_new_sent):
     n_tokens = len(edu_parse)
     edu_pos_tags = []
     edu_words = []
+    edu_lem_words = []
 
     for ind_in_edu in range(1, n_tokens):
         sent_node = sent_parse[ind_in_sent]
@@ -129,10 +130,12 @@ def set_edu_segment_in_sent(tree, sent_parse, edu_parse, is_new_sent):
         if sent_node['word'] == edu_node['word']:
             edu_words.append(edu_node['word'])
             edu_pos_tags.append(edu_node['tag'])
+            edu_lem_words.append(edu_node['lemma'])
             ind_in_sent += 1
 
     tree._edus_seg_in_sent.append((start_ind, ind_in_sent - 1))
     tree._edu_tokenized_table.append(edu_words)
+    tree._edu_lem_tokenized_table.append(edu_lem_words)
     tree._edu_pos_tags_table.append(edu_pos_tags)
 
     return start_ind, ind_in_sent - 1

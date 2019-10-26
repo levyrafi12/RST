@@ -56,7 +56,7 @@ def sequence_model(model, samples, vocab, tag_to_ind_map, gen_dep):
 	lstm2_opt = optim.Adam(lstm2.parameters(), lr=lr, weight_decay=l2_regul)
 
 	num_classes = len(action_to_ind_map)
-	decoder = Decoder(6 * hidden_size, num_classes)
+	decoder = Decoder(len(samples[0]._spans) * 2 * hidden_size, num_classes)
 	model._clf = decoder
 	model._lstm1 = lstm1
 	model._lstm2 = lstm2

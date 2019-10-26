@@ -55,7 +55,7 @@ def dplp_predict(model, x_vecs):
 	[predict] = clf.predict(x_vecs)
 	actions = [ind_to_action_map[predict]]
 	scores = [0] * len(ind_to_action_map)
-	# Correcting illegal action 
+	# Correcting illegal action in case buffer is empty
 	if actions[0] == 'SHIFT':
 		actions.append(baseline_action)
 
