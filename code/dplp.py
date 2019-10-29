@@ -20,8 +20,8 @@ from multiclass_svm import MulticlassSVM
 def dplp_algo(model, trees, samples, vocab, tag_to_ind_map, subset_size=500, print_every=10):
 	C = 1.0 # {1, 10, 50, 100}
 	# as tau becomes smaller the effect of A_prev is larger. No effect when tau = 1
-	tau = 0.1 # tau = { 1, 0.1, 0.01, 0.001} 
-	K = 60 # { 30, 60, 90, 150}
+	tau = 1.0 # tau = { 1, 0.1, 0.01, 0.001} 
+	K = 30 # { 30, 60, 90, 150}
 
 	subset_size = min(subset_size, len(samples))
 

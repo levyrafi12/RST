@@ -69,8 +69,6 @@ class TreeInfo(object):
 		self._sent_pos_tags_table = [['']]
 		# inputs of the EDUS seq encoder.
 		self._edu_represent_table = [0] # EDU representation table
-		# outputs of the EDUS seq encoder
-		self._encoded_edu_table = [0]
 		self._EDUS_parse = [{}] # data from dependency parser
 		self._sents_parse = [{}] # data from dependency parser
 		self._edus_seg_in_sent = [(0,0)] # segment boundaries

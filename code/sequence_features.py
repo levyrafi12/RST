@@ -64,23 +64,31 @@ def prepare_sents_as_inp_vecs_next(samples, vocab, tag_to_ind_map, use_def=False
 
 def prepare_edus_seq_as_inp_vecs(samples, vocab, tag_to_ind_map, bs=1):
 	tuples = [] # tuples of tree and seq_edus
-	n_spans = len(samples[0]._spans) * len(samples)
+	n_allspans = 0
 	i = 1
 
 	for sample in samples:
-		for s, t in sample._spans:
+		for s, _ in sample._spans:
+			if s > 0:
+				n_allspans += 1
+
+	for sample in samples:
+		for span_ind in range(len(sample._spans)):
+			s, t = sample._spans[span_ind]
+			if s == 0:
+				continue
 			edus_seq = []
 			for k in range(s, t + 1):
 				edus_seq.append(sample._tree._edu_represent_table[k])
 			# tensor dim is edus_seq_len * (2 * hidden_size)
-			tuples.append((sample._tree, (s, t), torch.stack(edus_seq)))
-			if i % bs == 0 or i == n_spans:
+			tuples.append((sample, span_ind, torch.stack(edus_seq)))
+			if i % bs == 0 or i == n_allspans:
 				# sort by the length of edus seq in descendent order
 				# x_vecs is a list of tensors of shape edus seq len * (2 * hidden_size)
-				[batch_to_tree, batch_to_span, x_vecs] = sort_tuples_and_split(tuples, True)
+				[batch_to_sample, batch_to_span_ind, x_vecs] = sort_tuples_and_split(tuples, True)
 				# x_padded_vecs is a tensor of n_sents * max_sent_len * n_features
 				x_padded_vecs = pad_sequence(x_vecs, batch_first=True)
-				yield x_padded_vecs, batch_to_tree, batch_to_span
+				yield x_padded_vecs, batch_to_sample, batch_to_span_ind
 				tuples = []
 			i += 1
 
@@ -100,9 +108,14 @@ def extract_edus_subtrees_hidden_repr(samples, vocab):
 
 def extract_edus_subtrees_hidden_repr_per_sample(sample, vocab):
 	inp_vec = []
-	for edu_i, edu_j in sample._spans:
-		inp_vec.append(average_pooling_of_edus_repr(sample._tree, edu_i, edu_j, vocab))
+	for ind in range(len(sample._spans)):
+		s, _ = sample._spans[ind]
+		if s > 0:
+			inp_vec.append(sample._encoded_spans[ind])
+		else:
+			inp_vec.append(gen_def_edu_hidden_repr(vocab))
 	inp_vec = torch.cat(inp_vec)
+	sample._encoded_spans = []
 	return inp_vec
 
 def gen_vectorized_words(sent, vocab, use_def=False):
@@ -140,17 +153,3 @@ def gen_def_edu_hidden_repr(vocab):
 	vec += gen_word_vectorized_feat(vocab, DEFAULT_TOKEN2, False, 'embedd')
 
 	return torch.tensor(vec)
-
-def average_pooling_of_edus_repr(tree, edu_i, edu_j, vocab):
-	"""
-		Generate subtree hidden representation by average pooling
-		of subtree's covering edus { edu_i, edu_i_1... edu_j}
-	"""
-	if edu_i == 0:
-		return gen_def_edu_hidden_repr(vocab)
-	subtree_repr = 0
-
-	for k in range(edu_i, edu_j + 1):
-		subtree_repr += tree._encoded_edu_table[k]
-
-	return subtree_repr / (edu_j - edu_i + 1)
